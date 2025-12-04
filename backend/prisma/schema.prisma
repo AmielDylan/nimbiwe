@@ -1,0 +1,136 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis]
+}
+
+enum Role {
+  AGENT
+  ADMIN
+}
+
+enum Unit {
+  kg
+  piece
+  basket
+}
+
+enum EntryStatus {
+  pending
+  validated
+  rejected
+}
+
+enum ValidationDecision {
+  validated
+  rejected
+}
+
+model Product {
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String       @unique
+  category      String?
+  unitsAllowed  String[]     @map("units_allowed")
+  entries       PriceEntry[]
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+model Market {
+  id        String                                  @id @default(uuid()) @db.Uuid
+  name      String
+  city      String
+  location  Unsupported("geometry(Point, 4326)")?
+  entries   PriceEntry[]
+  createdAt DateTime                                @default(now()) @map("created_at")
+  updatedAt DateTime                                @updatedAt @map("updated_at")
+
+  @@index([location], name: "market_location_idx", type: Gist)
+  @@map("markets")
+}
+
+model Agent {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  phone       String       @unique
+  role        Role         @default(AGENT)
+  entries     PriceEntry[]
+  validations Validation[]
+  refreshTokens RefreshToken[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@map("agents")
+}
+
+model PriceEntry {
+  id         String       @id @default(uuid()) @db.Uuid
+  productId  String       @map("product_id") @db.Uuid
+  marketId   String       @map("market_id") @db.Uuid
+  unit       Unit
+  priceValue Decimal      @map("price_value") @db.Decimal(12, 2)
+  currency   String       @default("XOF") @db.Char(3)
+  photoUrl   String?      @map("photo_url") @db.Text
+  lat        Float        @db.DoublePrecision
+  lon        Float        @db.DoublePrecision
+  capturedAt DateTime     @map("captured_at") @db.Timestamptz(6)
+  agentId    String       @map("agent_id") @db.Uuid
+  status     EntryStatus  @default(pending)
+  version    Int          @default(1)
+  clientId   String?      @map("client_id")
+  product    Product      @relation(fields: [productId], references: [id])
+  market     Market       @relation(fields: [marketId], references: [id])
+  agent      Agent        @relation(fields: [agentId], references: [id])
+  validation Validation?
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  @@unique([productId, marketId, unit, capturedAt, priceValue, currency], name: "unique_price_entry")
+  @@unique([clientId], name: "unique_client_id")
+  @@index([productId, marketId, capturedAt], name: "price_entry_lookup_idx")
+  @@map("price_entries")
+}
+
+model Validation {
+  id           String             @id @default(uuid()) @db.Uuid
+  priceEntryId String             @unique @map("price_entry_id") @db.Uuid
+  adminId      String             @map("admin_id") @db.Uuid
+  decision     ValidationDecision
+  reason       String?            @db.Text
+  validatedAt  DateTime           @default(now()) @map("validated_at") @db.Timestamptz(6)
+  priceEntry   PriceEntry         @relation(fields: [priceEntryId], references: [id])
+  admin        Agent              @relation(fields: [adminId], references: [id])
+
+  @@map("validations")
+}
+
+model Otp {
+  id        String   @id @default(uuid()) @db.Uuid
+  phone     String
+  code      String   @db.Char(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([phone, used, expiresAt], name: "otp_lookup_idx")
+  @@map("otps")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  agentId   String   @map("agent_id") @db.Uuid
+  token     String   @unique @db.Text
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, revoked], name: "refresh_token_agent_idx")
+  @@map("refresh_tokens")
+}
