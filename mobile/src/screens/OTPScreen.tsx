@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { authApi } from '../api/auth';
-import { setAuthToken } from '../api/products';
+import { setAuthToken } from '../api/entries';
 import { useAuthStore } from '../store/authStore';
 import { colors, baseStyles, spacing, borderRadius } from '../constants/theme';
 
