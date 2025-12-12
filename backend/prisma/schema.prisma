@@ -59,6 +59,7 @@ model Agent {
   id          String       @id @default(uuid()) @db.Uuid
   name        String
   phone       String       @unique
+  email       String?      @unique
   role        Role         @default(AGENT)
   entries     PriceEntry[]
   validations Validation[]
@@ -133,4 +134,16 @@ model RefreshToken {
 
   @@index([agentId, revoked], name: "refresh_token_agent_idx")
   @@map("refresh_tokens")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  code      String   @db.Char(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([email, used, expiresAt], name: "otp_code_lookup_idx")
+  @@map("otp_codes")
 }
