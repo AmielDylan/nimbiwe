@@ -84,7 +84,7 @@ model PriceEntry {
   agentId    String       @map("agent_id") @db.Uuid
   status     EntryStatus  @default(pending)
   version    Int          @default(1)
-  clientId   String?      @map("client_id")
+  clientId   String?      @unique @map("client_id")
   product    Product      @relation(fields: [productId], references: [id])
   market     Market       @relation(fields: [marketId], references: [id])
   agent      Agent        @relation(fields: [agentId], references: [id])
@@ -93,7 +93,6 @@ model PriceEntry {
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
   @@unique([productId, marketId, unit, capturedAt, priceValue, currency], name: "unique_price_entry")
-  @@unique([clientId], name: "unique_client_id")
   @@index([productId, marketId, capturedAt], name: "price_entry_lookup_idx")
   @@map("price_entries")
 }
