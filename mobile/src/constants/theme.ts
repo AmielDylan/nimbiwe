@@ -71,4 +71,9 @@ export const baseStyles = {
         fontSize: 16,
         fontWeight: '600' as TextStyle['fontWeight'],
     },
+    label: {
+        fontSize: 14,
+        fontWeight: '600' as TextStyle['fontWeight'],
+        color: colors.textPrimary,
+    },
 };

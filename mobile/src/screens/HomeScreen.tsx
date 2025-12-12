@@ -6,6 +6,7 @@ import {
     FlatList,
     RefreshControl,
     ActivityIndicator,
+    TouchableOpacity,
 } from 'react-native';
 import { NavigationProp } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
@@ -126,6 +127,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                     showsVerticalScrollIndicator={false}
                 />
             </View>
+
+            {/* FAB - Floating Action Button */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('PriceEntry' as never)}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.fabIcon}>+</Text>
+            </TouchableOpacity>
         </View>
     );
 }
@@ -171,5 +181,27 @@ const styles = StyleSheet.create({
     emptyEmoji: {
         fontSize: 64,
         marginBottom: spacing.md,
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 8,
+    },
+    fabIcon: {
+        fontSize: 32,
+        color: colors.white,
+        fontWeight: '300' as const,
+        marginTop: -2,
     },
 });
