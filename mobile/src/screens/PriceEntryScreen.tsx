@@ -31,6 +31,7 @@ export default function PriceEntryScreen({ navigation }: PriceEntryScreenProps) 
     const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
     const [price, setPrice] = useState('');
     const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+    const [address, setAddress] = useState<string | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,6 +57,23 @@ export default function PriceEntryScreen({ navigation }: PriceEntryScreenProps) 
                     lat: loc.coords.latitude,
                     lon: loc.coords.longitude,
                 });
+
+                // Reverse Geocoding
+                try {
+                    const addresses = await Location.reverseGeocodeAsync({
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude
+                    });
+                    if (addresses.length > 0) {
+                        const addr = addresses[0];
+                        // Construct user friendly string
+                        const parts = [addr.district, addr.city, addr.region].filter(Boolean);
+                        setAddress(parts.join(', ') || 'Adresse inconnue');
+                    }
+                } catch (e) {
+                    console.log('Reverse geocoding failed', e);
+                }
+
             } catch (error) {
                 setLocationError('Impossible de récupérer la position');
             }
@@ -205,10 +223,10 @@ export default function PriceEntryScreen({ navigation }: PriceEntryScreenProps) 
                     {location ? (
                         <>
                             <Text style={[baseStyles.bodySmall, { color: colors.success }]}>
-                                📍 Position capturée
+                                📍 Position: {address || 'Localisé'}
                             </Text>
                             <Text style={[baseStyles.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-                                {location.lat.toFixed(6)}, {location.lon.toFixed(6)}
+                                GPS: {location.lat.toFixed(6)}, {location.lon.toFixed(6)}
                             </Text>
                         </>
                     ) : (

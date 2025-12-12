@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { authApi } from '../api/auth';
-import { setAuthToken } from '../api/entries';
+import { authApi, setAuthToken } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import { colors, baseStyles, spacing, borderRadius } from '../constants/theme';
 
@@ -39,10 +38,10 @@ export default function OTPScreen({ navigation, route }: OTPScreenProps) {
     // Auto-submit quand les 6 chiffres sont saisis
     useEffect(() => {
         const otpString = otp.join('');
-        if (otpString.length === 6) {
+        if (otpString.length === 6 && !isLoading) {
             verifyOtp(otpString);
         }
-    }, [otp]);
+    }, [otp, isLoading]);
 
     const handleOtpChange = (value: string, index: number) => {
         // Accepter seulement les chiffres
@@ -66,6 +65,7 @@ export default function OTPScreen({ navigation, route }: OTPScreenProps) {
     };
 
     const verifyOtp = async (otpString: string) => {
+        if (isLoading) return;
         setIsLoading(true);
         try {
             const response = await authApi.verifyOtp(phoneOrEmail, otpString);
