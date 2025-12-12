@@ -126,15 +126,12 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
+        backgroundColor: colors.background,
     },
     modalContent: {
-        backgroundColor: colors.cardBackground,
-        borderTopLeftRadius: borderRadius.xl,
-        borderTopRightRadius: borderRadius.xl,
-        paddingTop: spacing.lg,
-        maxHeight: '70%',
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingTop: 50, // Safe area approx
     },
     modalHeader: {
         flexDirection: 'row',

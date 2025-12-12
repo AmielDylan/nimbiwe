@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.cardBackground,
         borderRadius: borderRadius.md,
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md, // Taller input
         borderWidth: 1,
         borderColor: colors.inputBorder,
     },
