@@ -1,9 +1,17 @@
 import { PrismaClient, Role } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import * as dotenv from 'dotenv';
 
-const prisma = new PrismaClient();
+dotenv.config();
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
     console.log('🌱 Seeding database...');
+
 
     // Clean existing data (development only)
     await prisma.priceEntry.deleteMany();
@@ -40,7 +48,7 @@ async function main() {
     console.log(`✅ Created ${products.length} products`);
 
     // Create 5 markets in Cotonou with PostGIS geometry
-    const markets = [];
+    const markets: Array<{ name: string; city: string; lat: number; lon: number }> = [];
     const marketData = [
         { name: 'Marché Dantokpa', city: 'Cotonou', lat: 6.3654, lon: 2.4183 },
         { name: 'Marché St Michel', city: 'Cotonou', lat: 6.3702, lon: 2.4289 },
@@ -51,15 +59,15 @@ async function main() {
 
     for (const market of marketData) {
         const created = await prisma.$executeRaw`
-      INSERT INTO markets (id, name, city, location, created_at, updated_at)
-      VALUES (
-        gen_random_uuid(),
-        ${market.name},
-        ${market.city},
-        ST_SetSRID(ST_MakePoint(${market.lon}, ${market.lat}), 4326),
-        NOW(),
-        NOW()
-      )
+      INSERT INTO markets(id, name, city, location, created_at, updated_at)
+VALUES(
+    gen_random_uuid(),
+    ${market.name},
+    ${market.city},
+    ST_SetSRID(ST_MakePoint(${market.lon}, ${market.lat}), 4326),
+    NOW(),
+    NOW()
+)
     `;
         markets.push(market);
     }
