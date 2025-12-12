@@ -34,8 +34,8 @@ export const productsApi = {
 
 // API Entries
 export const entriesApi = {
-    createEntry: async (entry: Omit<PriceEntry, 'id' | 'status'>): Promise<SyncResponse> => {
-        const { data } = await api.post('/sync/entries', entry);
+    createEntry: async (entries: Omit<PriceEntry, 'id' | 'status'>[]): Promise<SyncResponse[]> => {
+        const { data } = await api.post('/sync/entries', entries);
         return data;
     },
 };

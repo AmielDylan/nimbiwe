@@ -99,28 +99,46 @@ export default function PriceEntryScreen({ navigation }: PriceEntryScreenProps) 
             // Générer un clientId unique pour cette entrée
             const clientId = `entry_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-            await entriesApi.createEntry({
+            const entry = {
                 clientId,
                 productId: selectedProductId!,
                 marketId: selectedMarketId!,
-                unit: 'kg', // TODO: Permettre de sélectionner l'unité
+                unit: 'kg' as const, // TODO: Permettre de sélectionner l'unité
                 priceValue: parseFloat(price),
                 currency: 'XOF',
                 lat: location.lat,
                 lon: location.lon,
                 capturedAt: new Date().toISOString(),
-            });
+            };
 
-            Alert.alert(
-                'Succès',
-                'Prix enregistré avec succès',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => navigation.goBack(),
-                    },
-                ]
-            );
+            // L'API attend un tableau d'entrées
+            const response = await entriesApi.createEntry([entry]);
+
+            // Vérifier le statut de la réponse
+            const result = response[0];
+            if (result.status === 'accepted') {
+                Alert.alert(
+                    'Succès',
+                    'Prix enregistré avec succès',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.goBack(),
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert(
+                    'Information',
+                    result.reason || `Statut: ${result.status}`,
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.goBack(),
+                        },
+                    ]
+                );
+            }
         } catch (error: any) {
             console.error('Error submitting price:', error);
             Alert.alert(
