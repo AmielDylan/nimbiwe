@@ -39,6 +39,7 @@ describe('écran Profil, non connecté', () => {
 
     expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
     expect(screen.getByText(/uniquement pour vous connecter/)).toBeOnTheScreen();
+    expect(screen.getByText(/En demandant un code, vous acceptez/)).toBeOnTheScreen();
     expect(screen.getByText(/jamais montré aux autres/)).toBeOnTheScreen();
     expect(screen.getByLabelText('Numéro de téléphone')).toBeOnTheScreen();
     expect(screen.queryByText('Vous êtes connecté.')).not.toBeOnTheScreen();
@@ -85,6 +86,20 @@ describe('écran Profil, non connecté', () => {
     expect(screen.queryByLabelText('Numéro de téléphone')).not.toBeOnTheScreen();
   });
 
+  it("distingue une panne du serveur d'un code faux quand on vérifie le code", async () => {
+    simulerApi(donnees, { verificationEnPanne: true });
+    render(<Profil />);
+    await saisirNumeroEtDemanderLeCode();
+
+    fireEvent.changeText(await screen.findByLabelText('Code reçu par SMS'), CODE_VALIDE);
+    fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
+
+    expect(
+      await screen.findByText('Impossible de vérifier le code. Vérifiez votre connexion et réessayez.'),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(/Code incorrect ou expiré/)).not.toBeOnTheScreen();
+  });
+
   it('dit clairement quand le code est faux ou expiré', async () => {
     simulerApi(donnees);
     render(<Profil />);
@@ -107,10 +122,10 @@ describe('écran Profil, non connecté', () => {
       await saisirNumeroEtDemanderLeCode();
       await screen.findByLabelText('Code reçu par SMS');
 
-      expect(screen.getByRole('button', { name: /Renvoyer le code dans 30 s/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Renvoyer le code dans 60 s/ })).toBeDisabled();
 
       await act(async () => {
-        jest.advanceTimersByTime(30_000);
+        jest.advanceTimersByTime(60_000);
       });
       fireEvent.press(screen.getByRole('button', { name: 'Renvoyer le code' }));
 
@@ -154,6 +169,31 @@ describe('écran Profil, connecté', () => {
 
     expect(await screen.findByText('Nom enregistré.')).toBeOnTheScreen();
     expect(api.nomAffiche).toBe('Adjovi');
+  });
+
+  it("dit que le nom n'a pas été enregistré quand aucun profil n'est modifié", async () => {
+    simulerApi(donnees, { profilIntrouvable: true });
+    render(<Profil />);
+    await seConnecter();
+
+    fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi');
+    fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(await screen.findByText(/Impossible d'enregistrer le nom/)).toBeOnTheScreen();
+    expect(screen.queryByText('Nom enregistré.')).not.toBeOnTheScreen();
+  });
+
+  it("efface le message d'enregistrement dès que le nom est modifié", async () => {
+    simulerApi(donnees);
+    render(<Profil />);
+    await seConnecter();
+    fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi');
+    fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+    await screen.findByText('Nom enregistré.');
+
+    fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi D');
+
+    expect(screen.queryByText('Nom enregistré.')).not.toBeOnTheScreen();
   });
 
   it('déconnecte et revient au formulaire de connexion', async () => {

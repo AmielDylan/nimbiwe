@@ -19,6 +19,9 @@ begin
 end;
 $$;
 
+-- Fonction de déclencheur : personne ne l'appelle directement.
+revoke execute on function public.creer_profil() from public, anon, authenticated;
+
 create trigger creer_profil_a_la_creation_du_compte
   after insert on auth.users
   for each row execute function public.creer_profil();

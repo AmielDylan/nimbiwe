@@ -262,7 +262,9 @@ template = "Your code is {{ .Code }}"
 max_frequency = "1s"
 
 # Numéros de test à code fixe : aucun SMS réel n'est envoyé. Base locale
-# uniquement, à ne jamais recopier sur le projet distant.
+# uniquement. ATTENTION : ne jamais lancer `supabase config push` vers le projet
+# distant avec ce fichier tel quel : il y publierait ces numéros et ce code
+# connu de tous, ainsi qu'un fournisseur SMS factice.
 [auth.sms.test_otp]
 22900000101 = "123456"
 22900000102 = "123456"

@@ -35,13 +35,18 @@ const fetchFactice = () => globalThis.fetch as jest.Mock;
 
 export const CODE_VALIDE = '123456';
 export const UTILISATEUR_ID = 'a1b2c3d4-0000-4000-8000-000000000001';
-export const CLE_DE_SESSION = 'sb-api-auth-token'; // sb-<premier label de l'hôte api.test>-auth-token
+// Clé de stockage de la session : sb-<premier label de l'hôte>-auth-token.
+export const CLE_DE_SESSION = `sb-${new URL(process.env.EXPO_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token`;
 
 type OptionsConnexion = {
   /** Nom affiché déjà enregistré pour le compte de test. */
   nomAffiche?: string | null;
   /** L'envoi du code échoue (réseau, limite de fréquence…). */
   envoiEnPanne?: boolean;
+  /** La vérification du code échoue à cause du serveur (et non d'un mauvais code). */
+  verificationEnPanne?: boolean;
+  /** Aucun profil n'existe pour ce compte : la modification ne touche aucune ligne. */
+  profilIntrouvable?: boolean;
 };
 
 /** Ce que l'API simulée a reçu et retient : les tests le lisent pour vérifier les effets. */
@@ -101,6 +106,7 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
       return json({});
     }
     if (adresse.endsWith('/auth/v1/verify')) {
+      if (options.verificationEnPanne) return json({ msg: 'Erreur interne' }, 500);
       if (corps.token !== CODE_VALIDE) {
         return json({ code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }, 403);
       }
@@ -112,8 +118,9 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
     }
     if (adresse.endsWith('/rest/v1/profils')) {
       if (init?.method === 'PATCH') {
+        if (options.profilIntrouvable) return json([]);
         simulation.nomAffiche = corps.nom_affiche;
-        return new Response(null, { status: 204 });
+        return json([{ id: UTILISATEUR_ID }]); // lignes modifiées, comme le fait l'API avec `select`
       }
       return json([{ nom_affiche: simulation.nomAffiche }]);
     }

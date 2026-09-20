@@ -4,6 +4,7 @@ import { admin, CODE_DE_TEST, lecteurAnonyme, numeroDeTestNeuf, seConnecter } fr
 
 // Codes Postgres et GoTrue observés à travers l'API.
 const REFUSE_PAR_LA_SECURITE = '42501';
+const CONTRAINTE_VIOLEE = '23514'; // check_violation
 
 describe('connexion par SMS', () => {
   it('avec un numéro de test et son code fixe, on se connecte sans SMS réel', async () => {
@@ -88,8 +89,13 @@ describe('profil', () => {
   });
 
   it("un contributeur ne lit ni ne modifie le profil d'un autre", async () => {
-    const { client } = await seConnecter(await numeroDeTestNeuf());
-    const { data: autre } = await admin.from('profils').select('id, nom_affiche').limit(1).single();
+    const { client, utilisateurId } = await seConnecter(await numeroDeTestNeuf());
+    const { data: autre } = await admin
+      .from('profils')
+      .select('id, nom_affiche')
+      .neq('id', utilisateurId)
+      .limit(1)
+      .single();
 
     const lecture = await client.from('profils').select('id').eq('id', autre!.id);
     const modification = await client
@@ -98,8 +104,10 @@ describe('profil', () => {
       .eq('id', autre!.id)
       .select();
 
+    expect(lecture.error).toBeNull();
     expect(lecture.data).toEqual([]);
-    expect(modification.data ?? []).toEqual([]);
+    expect(modification.error).toBeNull();
+    expect(modification.data).toEqual([]);
     const { data: apres } = await admin.from('profils').select('nom_affiche').eq('id', autre!.id).single();
     expect(apres?.nom_affiche).toBe(autre!.nom_affiche);
   });
@@ -110,15 +118,16 @@ describe('profil', () => {
     const vide = await client.from('profils').update({ nom_affiche: '   ' }).eq('id', utilisateurId);
     const trop = await client.from('profils').update({ nom_affiche: 'x'.repeat(41) }).eq('id', utilisateurId);
 
-    expect(vide.error).not.toBeNull();
-    expect(trop.error).not.toBeNull();
+    expect(vide.error?.code).toBe(CONTRAINTE_VIOLEE);
+    expect(trop.error?.code).toBe(CONTRAINTE_VIOLEE);
   });
 
   it('un lecteur anonyme ne lit toujours aucun profil', async () => {
     await seConnecter(await numeroDeTestNeuf());
 
-    const { data } = await lecteurAnonyme.from('profils').select('id');
+    const { data, error } = await lecteurAnonyme.from('profils').select('id');
 
-    expect(data ?? []).toEqual([]);
+    expect(error?.code).toBe(REFUSE_PAR_LA_SECURITE);
+    expect(data).toBeNull();
   });
 });
