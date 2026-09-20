@@ -56,7 +56,7 @@ export function simulerApiLente(donnees: Donnees) {
 export const marches: Marche[] = [
   { id: 1, nom: 'Ganhi' },
   { id: 2, nom: 'Ouando' },
-  { id: 3, nom: 'Cotonou (provisoire)' },
+  { id: 3, nom: 'Dantokpa' },
 ];
 
 export const produits: Produit[] = [
@@ -74,8 +74,8 @@ export function prixCourant(surcharge: Partial<PrixCourant>): PrixCourant {
     marche: 'Ganhi',
     statut: 'publie',
     prix: 425,
-    nombre_signalements: 3,
-    dernier_signalement_le: ilYaJours(2),
+    nombre_collectes: 3,
+    derniere_collecte_le: ilYaJours(2),
     ...surcharge,
   };
 }
