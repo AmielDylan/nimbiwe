@@ -21,7 +21,7 @@ describe('onglets', () => {
     await screen.findByText('425 FCFA / kg');
 
     fireEvent.press(screen.getByRole('button', { name: 'Collecter, onglet 2 sur 3' }));
-    expect(screen.getByText('La collecte de prix arrive bientôt.')).toBeOnTheScreen();
+    expect(await screen.findByText('Connectez-vous pour collecter un prix.')).toBeOnTheScreen();
 
     fireEvent.press(screen.getByRole('button', { name: 'Profil, onglet 3 sur 3' }));
     expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();

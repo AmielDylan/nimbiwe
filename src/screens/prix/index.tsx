@@ -1,10 +1,10 @@
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
+import { Puces } from '@/components/puces';
 import { useTheme } from '@/theme';
 
 import { CartePrix } from './carte-prix';
-import { Filtres } from './filtres';
-import { capitaliser } from './formats';
+import { capitaliser } from '@/lib/formats';
 import { usePrix } from './use-prix';
 
 export function Prix() {
@@ -39,13 +39,13 @@ export function Prix() {
                 Actualisation impossible. Vérifiez votre connexion.
               </Text>
             )}
-            <Filtres
+            <Puces
               toutLibelle="Tous les marchés"
               options={etat.marches.map((m) => ({ id: m.id, libelle: m.nom }))}
               selection={marcheId}
               onChoisir={choisirMarche}
             />
-            <Filtres
+            <Puces
               toutLibelle="Tous les produits"
               options={etat.produits.map((p) => ({ id: p.id, libelle: capitaliser(p.nom) }))}
               selection={produitId}

@@ -28,6 +28,17 @@ La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000
 
 Le fournisseur SMS est factice en local : copier `supabase/.env.example` vers `supabase/.env` avant `npm run db:start`. Le fournisseur réel se configure sur le projet distant (pilote : Twilio, ouverture publique : BulkGate), ainsi que le délai minimal entre deux codes (`max_frequency`, 1 s en local pour les tests, à mettre à 60 s).
 
+## Garde-fous de la collecte
+
+Le serveur décide (voir `supabase/migrations/…_collecter_un_prix.sql`) :
+
+- **Bornes plausibles** (`bornes_plausibles`, prix unitaire par produit et unité) : un prix hors bornes est refusé (code `NB003`) tant que le contributeur ne le confirme pas ; la confirmation est enregistrée avec la collecte. Les valeurs actuelles sont des exemples, à fixer avec les relais.
+- **Limite de fréquence** : 5 collectes par jour et par contributeur, produit et marché (code `NB002`), réglable dans la table `parametres` (`collectes_max_par_jour`).
+- **Compte bloqué** : `profils.est_bloque`, à poser depuis le tableau de bord de la base (code `NB001`).
+- **Date d'observation** : jamais dans le futur, ni plus ancienne que 7 jours (`collecte_anciennete_max_jours`, code `NB004`).
+
+Ces règles s'appliquent aux contributeurs connectés, pas au tableau de bord ni aux imports. Les tables `parametres` et `bornes_plausibles` ne sont lisibles ni modifiables par le client.
+
 ## Base de données locale
 
 ```bash

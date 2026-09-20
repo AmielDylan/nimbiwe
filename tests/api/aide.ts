@@ -119,3 +119,45 @@ export async function seConnecter(telephone: string) {
   if (error || !data.user) throw error ?? new Error('Connexion impossible');
   return { client, utilisateurId: data.user.id };
 }
+
+/**
+ * Un contributeur connecté, comme le ferait l'app, sur un compte jetable : il
+ * n'utilise pas les numéros de test, donc plusieurs fichiers de test peuvent
+ * tourner en parallèle sans se gêner.
+ */
+export async function contributeurConnecte() {
+  const telephone = `229${Math.floor(90_000_000 + Math.random() * 9_999_999)}`;
+  const motDePasse = crypto.randomUUID();
+  const { data, error } = await admin.auth.admin.createUser({
+    phone: telephone,
+    password: motDePasse,
+    phone_confirm: true,
+  });
+  if (error || !data.user) throw error ?? new Error('Compte de test non créé');
+
+  const client = createClient(url!, cleAnonyme!, sansSession);
+  const connexion = await client.auth.signInWithPassword({ phone: telephone, password: motDePasse });
+  if (connexion.error) throw connexion.error;
+
+  const id = data.user.id;
+  return {
+    client,
+    id,
+    /** Supprime le compte et ses collectes (à appeler en fin de test). */
+    async nettoyer() {
+      await admin.from('collectes').delete().eq('contributeur_id', id);
+      await admin.auth.admin.deleteUser(id);
+    },
+  };
+}
+
+/** Identifiants d'un produit et d'une unité du référentiel, par leur nom. */
+export async function identifiants(produit: string, unite: string) {
+  const [p, u] = await Promise.all([
+    admin.from('produits').select('id').eq('nom', produit).single(),
+    admin.from('unites').select('id').eq('symbole', unite).single(),
+  ]);
+  if (p.error) throw p.error;
+  if (u.error) throw u.error;
+  return { produit_id: p.data.id as number, unite_id: u.data.id as number };
+}

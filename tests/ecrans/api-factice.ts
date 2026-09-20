@@ -5,7 +5,7 @@
 import type { PrixCourant, Reference } from '@/screens/prix/use-prix';
 
 export type Marche = Reference;
-export type Produit = Reference;
+export type Produit = Reference & { unites?: { id: number; symbole: string }[] };
 export type { PrixCourant };
 export type Donnees = { marches: Marche[]; produits: Produit[]; prix_courants: PrixCourant[] };
 
@@ -47,6 +47,24 @@ type OptionsConnexion = {
   verificationEnPanne?: boolean;
   /** Aucun profil n'existe pour ce compte : la modification ne touche aucune ligne. */
   profilIntrouvable?: boolean;
+  /** Collectes déjà envoyées par le contributeur connecté (lignes telles que les renvoie l'API). */
+  mesCollectes?: LigneCollecte[];
+  /** Le serveur refuse toute collecte avec ce code d'erreur (NB001, NB002…). */
+  collecteRefusee?: string;
+  /** Le serveur juge le prix hors bornes, tant que la collecte n'est pas confirmée. */
+  horsBornes?: 'haut' | 'bas';
+  /** L'envoi des collectes échoue à cause du réseau ou du serveur. */
+  collecteEnPanne?: boolean;
+};
+
+export type LigneCollecte = {
+  id: string;
+  prix_total: number;
+  quantite: number;
+  observe_le: string;
+  produits: { nom: string };
+  unites: { symbole: string };
+  marches: { nom: string };
 };
 
 /** Ce que l'API simulée a reçu et retient : les tests le lisent pour vérifier les effets. */
@@ -54,6 +72,10 @@ export type Simulation = {
   demandesDeCode: string[];
   nomAffiche: string | null;
   deconnexions: number;
+  /** Corps des collectes reçues et acceptées par le serveur simulé. */
+  collectes: Record<string, unknown>[];
+  /** Nombre de tentatives d'envoi de collecte, acceptées ou non. */
+  envoisDeCollecte: number;
 };
 
 function jwt(charge: object): string {
@@ -94,7 +116,14 @@ function chemin(requete: RequestInfo | URL): string {
  * valide est CODE_VALIDE.
  */
 export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsConnexion = {}): Simulation {
-  const simulation: Simulation = { demandesDeCode: [], nomAffiche: options.nomAffiche ?? null, deconnexions: 0 };
+  const simulation: Simulation = {
+    demandesDeCode: [],
+    nomAffiche: options.nomAffiche ?? null,
+    deconnexions: 0,
+    collectes: [],
+    envoisDeCollecte: 0,
+  };
+  const mesCollectes = [...(options.mesCollectes ?? [])];
 
   fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
     const adresse = chemin(requete);
@@ -123,6 +152,35 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
         return json([{ id: UTILISATEUR_ID }]); // lignes modifiées, comme le fait l'API avec `select`
       }
       return json([{ nom_affiche: simulation.nomAffiche }]);
+    }
+
+    if (adresse.endsWith('/rest/v1/collectes')) {
+      if (init?.method === 'POST') {
+        simulation.envoisDeCollecte += 1;
+        if (options.collecteEnPanne) return json({ message: 'Erreur interne' }, 500);
+        if (options.collecteRefusee) {
+          return json({ code: options.collecteRefusee, message: 'Refusé par le serveur', details: null, hint: null }, 400);
+        }
+        if (options.horsBornes && corps.hors_bornes_confirme !== true) {
+          return json({ code: 'NB003', message: 'Prix hors bornes', details: null, hint: options.horsBornes }, 400);
+        }
+        simulation.collectes.push(corps);
+        const courantes = typeof donnees === 'function' ? donnees() : donnees;
+        mesCollectes.unshift({
+          id: `collecte-${simulation.collectes.length}`,
+          prix_total: corps.prix_total,
+          quantite: corps.quantite,
+          observe_le: new Date().toISOString(),
+          produits: { nom: courantes.produits.find((p) => p.id === corps.produit_id)?.nom ?? '' },
+          unites: {
+            symbole:
+              courantes.produits.flatMap((p) => p.unites ?? []).find((u) => u.id === corps.unite_id)?.symbole ?? '',
+          },
+          marches: { nom: courantes.marches.find((m) => m.id === corps.marche_id)?.nom ?? '' },
+        });
+        return new Response(null, { status: 201 });
+      }
+      return json(mesCollectes);
     }
 
     const courantes = typeof donnees === 'function' ? donnees() : donnees;
@@ -155,8 +213,16 @@ export const marches: Marche[] = [
 ];
 
 export const produits: Produit[] = [
-  { id: 1, nom: 'maïs' },
-  { id: 2, nom: 'sucre' },
+  { id: 1, nom: 'maïs', unites: [{ id: 10, symbole: 'kg' }] },
+  { id: 2, nom: 'sucre', unites: [{ id: 10, symbole: 'kg' }] },
+  {
+    id: 3,
+    nom: 'igname',
+    unites: [
+      { id: 10, symbole: 'kg' },
+      { id: 12, symbole: 'pièce' },
+    ],
+  },
 ];
 
 export function prixCourant(surcharge: Partial<PrixCourant>): PrixCourant {

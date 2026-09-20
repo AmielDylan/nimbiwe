@@ -41,3 +41,8 @@ export function formaterNombreDeCollectes(nombre: number): string {
   if (nombre === 0) return 'Aucune collecte sur 7 jours';
   return `${nombre} collecte${nombre > 1 ? 's' : ''} sur 7 jours`;
 }
+
+/** 2.5 -> « 2,5 » : virgule décimale à la française. */
+export function formaterQuantite(quantite: number): string {
+  return String(quantite).replace('.', ',');
+}

@@ -5,15 +5,18 @@ import { useTheme } from '@/theme';
 type Option = { id: number; libelle: string };
 
 type Props = {
-  toutLibelle: string;
+  /** Puce « tout » (aucun filtre) ; absente quand un choix est toujours actif. */
+  toutLibelle?: string;
   options: Option[];
   selection: number | null;
   onChoisir: (id: number | null) => void;
 };
 
-export function Filtres({ toutLibelle, options, selection, onChoisir }: Props) {
+export function Puces({ toutLibelle, options, selection, onChoisir }: Props) {
   const theme = useTheme();
-  const puces = [{ id: null, libelle: toutLibelle }, ...options];
+  const puces: { id: number | null; libelle: string }[] = toutLibelle
+    ? [{ id: null, libelle: toutLibelle }, ...options]
+    : options;
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ligne}>
