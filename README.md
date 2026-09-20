@@ -24,7 +24,9 @@ Les tests d'API préparent leurs données avec la clé « Secret » de la base *
 
 ## Connexion par SMS en développement
 
-La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000112` (à saisir tels quels dans l'app) répondent tous avec le code fixe **123456**. Ils sont déclarés dans `supabase/config.toml` (`[auth.sms.test_otp]`) et ne doivent jamais être recopiés sur le projet distant : **ne lancez pas `supabase config push` avec ce `config.toml`** (il y publierait les numéros de test, le code connu et le fournisseur factice). La configuration distante se fait depuis le tableau de bord.
+La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000104` (à saisir tels quels dans l'app) répondent tous avec le code fixe **123456** : ils sont réservés à l'usage manuel. Les numéros `22900000201` à `22900000212` sont réservés aux tests automatiques, qui suppriment et recréent ces comptes : ne les utilisez pas à la main.
+
+Après un `npm run db:reset`, la base ne connaît plus vos comptes : l'app referme alors toute session dont le compte a disparu, et il faut se reconnecter. Ils sont déclarés dans `supabase/config.toml` (`[auth.sms.test_otp]`) et ne doivent jamais être recopiés sur le projet distant : **ne lancez pas `supabase config push` avec ce `config.toml`** (il y publierait les numéros de test, le code connu et le fournisseur factice). La configuration distante se fait depuis le tableau de bord.
 
 Le fournisseur SMS est factice en local : copier `supabase/.env.example` vers `supabase/.env` avant `npm run db:start`. Le fournisseur réel se configure sur le projet distant (pilote : Twilio, ouverture publique : BulkGate), ainsi que le délai minimal entre deux codes (`max_frequency`, 1 s en local pour les tests, à mettre à 60 s).
 

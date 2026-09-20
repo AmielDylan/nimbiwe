@@ -94,7 +94,9 @@ export async function creerScenario() {
 
 /** Numéros de test de la base locale (supabase/config.toml, [auth.sms.test_otp]) : aucun SMS réel. */
 export const CODE_DE_TEST = '123456';
-const NUMEROS_DE_TEST = Array.from({ length: 12 }, (_, i) => `229000001${String(i + 1).padStart(2, '0')}`);
+// Réservés aux tests (supabase/config.toml) : ils sont supprimés et recréés à chaque test,
+// contrairement aux numéros 22900000101 à 22900000104 gardés pour l'usage manuel.
+const NUMEROS_DE_TEST = Array.from({ length: 12 }, (_, i) => `229000002${String(i + 1).padStart(2, '0')}`);
 let prochainNumero = Math.floor(Math.random() * NUMEROS_DE_TEST.length);
 
 /**

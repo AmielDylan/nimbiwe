@@ -44,14 +44,17 @@ export function useNomAffiche(utilisateurId: string) {
       .eq('id', utilisateurId)
       .select('id');
     setEnregistrementEnCours(false);
-    setMessage(
-      error || !data?.length
-        ? {
-            texte: `Impossible d'enregistrer le nom. Il doit faire ${LONGUEUR_MAX_NOM} caractères au plus ; réessayez.`,
-            erreur: true,
-          }
-        : { texte: 'Nom enregistré.', erreur: false },
-    );
+    if (error) {
+      setMessage({
+        texte: `Impossible d'enregistrer le nom. Il doit faire ${LONGUEUR_MAX_NOM} caractères au plus ; réessayez.`,
+        erreur: true,
+      });
+    } else if (!data?.length) {
+      // Aucune ligne modifiée : le profil n'existe pas (compte supprimé côté serveur).
+      setMessage({ texte: 'Votre profil est introuvable. Déconnectez-vous, puis reconnectez-vous.', erreur: true });
+    } else {
+      setMessage({ texte: 'Nom enregistré.', erreur: false });
+    }
   }
 
   return { nom, modifier, message, enregistrementEnCours, enregistrer };

@@ -10,6 +10,8 @@ const COMPTE_BLOQUE = 'NB001';
 const LIMITE_QUOTIDIENNE = 'NB002';
 const HORS_BORNES = 'NB003';
 const DATE_INVALIDE = 'NB004';
+// Clé étrangère : le compte (ou son profil) n'existe plus côté serveur.
+const COMPTE_INCONNU = '23503';
 
 type Message = { texte: string; erreur: boolean };
 
@@ -161,6 +163,8 @@ function messageDeRefus(code: string | undefined): string {
       return 'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.';
     case COMPTE_BLOQUE:
       return "Votre compte ne peut plus relever de prix. Contactez l'équipe Nimbiwe.";
+    case COMPTE_INCONNU:
+      return "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.";
     case DATE_INVALIDE:
       return "La date de votre téléphone semble incorrecte. Vérifiez-la, puis réessayez.";
     default:

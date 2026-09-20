@@ -268,6 +268,20 @@ describe('refus et pannes', () => {
     expect(api.envoisDeReleve).toBe(1);
   });
 
+  it("dit de se reconnecter quand le compte n'est plus reconnu par le serveur", async () => {
+    simulerApi(donnees, { releveRefuse: '23503' });
+    await ouvrirLaReleveConnecte();
+    await screen.findByRole('button', { name: 'Maïs' });
+
+    await remplirEtEnvoyer();
+
+    expect(
+      await screen.findByText(
+        "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.",
+      ),
+    ).toBeOnTheScreen();
+  });
+
   it("garde la saisie et propose de réessayer quand l'envoi échoue", async () => {
     const api = simulerApi(donnees, { releveEnPanne: true });
     await ouvrirLaReleveConnecte();

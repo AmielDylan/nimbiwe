@@ -47,6 +47,8 @@ type OptionsConnexion = {
   verificationEnPanne?: boolean;
   /** Aucun profil n'existe pour ce compte : la modification ne touche aucune ligne. */
   profilIntrouvable?: boolean;
+  /** Le compte de la session enregistrée n'existe plus (base réinitialisée, compte supprimé). */
+  compteSupprime?: boolean;
   /** Relevés déjà envoyés par le contributeur connecté (lignes telles que les renvoie l'API). */
   mesReleves?: LigneReleve[];
   /** Le serveur refuse tout relevé avec ce code d'erreur (NB001, NB002…). */
@@ -142,6 +144,15 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
         return json({ code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }, 403);
       }
       return json(sessionDeTest(corps.phone));
+    }
+    if (adresse.endsWith('/auth/v1/user')) {
+      if (options.compteSupprime) {
+        return json(
+          { code: 403, error_code: 'user_not_found', msg: 'User from sub claim in JWT does not exist' },
+          403,
+        );
+      }
+      return json(sessionDeTest().user);
     }
     if (adresse.endsWith('/auth/v1/logout')) {
       simulation.deconnexions += 1;
