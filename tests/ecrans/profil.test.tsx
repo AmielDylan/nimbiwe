@@ -148,6 +148,17 @@ describe('écran Profil, connecté', () => {
     expect(api.demandesDeCode).toEqual([]);
   });
 
+  it("referme la session et revient à la connexion quand le compte n'existe plus", async () => {
+    await AsyncStorage.setItem(CLE_DE_SESSION, JSON.stringify(sessionDeTest()));
+    const api = simulerApi(donnees, { compteSupprime: true });
+
+    render(<Profil />);
+
+    expect(await screen.findByLabelText('Numéro de téléphone')).toBeOnTheScreen();
+    expect(screen.queryByText('Vous êtes connecté.')).not.toBeOnTheScreen();
+    expect(api.deconnexions).toBe(1);
+  });
+
   it('affiche le nom déjà enregistré et ne montre jamais le numéro', async () => {
     await AsyncStorage.setItem(CLE_DE_SESSION, JSON.stringify(sessionDeTest('22997000000')));
     simulerApi(donnees, { nomAffiche: 'Adjovi' });
@@ -179,7 +190,9 @@ describe('écran Profil, connecté', () => {
     fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi');
     fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
 
-    expect(await screen.findByText(/Impossible d'enregistrer le nom/)).toBeOnTheScreen();
+    expect(
+      await screen.findByText('Votre profil est introuvable. Déconnectez-vous, puis reconnectez-vous.'),
+    ).toBeOnTheScreen();
     expect(screen.queryByText('Nom enregistré.')).not.toBeOnTheScreen();
   });
 

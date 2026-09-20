@@ -265,19 +265,27 @@ max_frequency = "1s"
 # uniquement. ATTENTION : ne jamais lancer `supabase config push` vers le projet
 # distant avec ce fichier tel quel : il y publierait ces numéros et ce code
 # connu de tous, ainsi qu'un fournisseur SMS factice.
+#
+# 22900000101 à 22900000104 : réservés à l'usage manuel (simulateur, iPhone).
+# 22900000201 à 22900000212 : réservés aux tests automatiques, qui suppriment et
+# recréent ces comptes ; ne pas les utiliser à la main.
 [auth.sms.test_otp]
 22900000101 = "123456"
 22900000102 = "123456"
 22900000103 = "123456"
 22900000104 = "123456"
-22900000105 = "123456"
-22900000106 = "123456"
-22900000107 = "123456"
-22900000108 = "123456"
-22900000109 = "123456"
-22900000110 = "123456"
-22900000111 = "123456"
-22900000112 = "123456"
+22900000201 = "123456"
+22900000202 = "123456"
+22900000203 = "123456"
+22900000204 = "123456"
+22900000205 = "123456"
+22900000206 = "123456"
+22900000207 = "123456"
+22900000208 = "123456"
+22900000209 = "123456"
+22900000210 = "123456"
+22900000211 = "123456"
+22900000212 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]

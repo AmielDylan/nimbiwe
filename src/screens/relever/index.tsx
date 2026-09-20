@@ -3,10 +3,10 @@ import { ActivityIndicator, View } from 'react-native';
 import { useSession } from '@/lib/use-session';
 import { useTheme } from '@/theme';
 
-import { Connexion } from './connexion';
-import { ProfilConnecte } from './profil-connecte';
+import { Formulaire } from './formulaire';
+import { InviteConnexion } from './invite-connexion';
 
-export function Profil() {
+export function Relever() {
   const theme = useTheme();
   const session = useSession();
 
@@ -17,5 +17,5 @@ export function Profil() {
       </View>
     );
   }
-  return session ? <ProfilConnecte session={session} /> : <Connexion />;
+  return session ? <Formulaire /> : <InviteConnexion />;
 }

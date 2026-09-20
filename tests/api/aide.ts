@@ -24,7 +24,7 @@ export function ilYaJours(jours: number): string {
   return new Date(Date.now() - jours * JOUR).toISOString();
 }
 
-type Collecte = { prix: number; joursPasses?: number; quantite?: number };
+type Releve = { prix: number; joursPasses?: number; quantite?: number };
 
 /**
  * Un marché jetable avec ses contributeurs : chaque test travaille sur son
@@ -65,13 +65,13 @@ export async function creerScenario() {
     return data.id as number;
   }
 
-  async function collecter(
+  async function relever(
     contributeurId: string,
     produit: string,
     unite: string,
-    { prix, joursPasses = 0, quantite = 1 }: Collecte,
+    { prix, joursPasses = 0, quantite = 1 }: Releve,
   ) {
-    const { error: erreur } = await admin.from('collectes').insert({
+    const { error: erreur } = await admin.from('releves').insert({
       marche_id: marche.id,
       produit_id: await id('produits', 'nom', produit),
       unite_id: await id('unites', 'symbole', unite),
@@ -84,17 +84,19 @@ export async function creerScenario() {
   }
 
   async function nettoyer() {
-    await admin.from('collectes').delete().eq('marche_id', marche.id);
+    await admin.from('releves').delete().eq('marche_id', marche.id);
     await admin.from('marches').delete().eq('id', marche.id);
     for (const utilisateur of contributeurs) await admin.auth.admin.deleteUser(utilisateur);
   }
 
-  return { marcheId: marche.id as number, contributeur, collecter, nettoyer };
+  return { marcheId: marche.id as number, contributeur, relever, nettoyer };
 }
 
 /** Numéros de test de la base locale (supabase/config.toml, [auth.sms.test_otp]) : aucun SMS réel. */
 export const CODE_DE_TEST = '123456';
-const NUMEROS_DE_TEST = Array.from({ length: 12 }, (_, i) => `229000001${String(i + 1).padStart(2, '0')}`);
+// Réservés aux tests (supabase/config.toml) : ils sont supprimés et recréés à chaque test,
+// contrairement aux numéros 22900000101 à 22900000104 gardés pour l'usage manuel.
+const NUMEROS_DE_TEST = Array.from({ length: 12 }, (_, i) => `229000002${String(i + 1).padStart(2, '0')}`);
 let prochainNumero = Math.floor(Math.random() * NUMEROS_DE_TEST.length);
 
 /**
@@ -118,4 +120,46 @@ export async function seConnecter(telephone: string) {
   const { data, error } = await client.auth.verifyOtp({ phone: telephone, token: CODE_DE_TEST, type: 'sms' });
   if (error || !data.user) throw error ?? new Error('Connexion impossible');
   return { client, utilisateurId: data.user.id };
+}
+
+/**
+ * Un contributeur connecté, comme le ferait l'app, sur un compte jetable : il
+ * n'utilise pas les numéros de test, donc plusieurs fichiers de test peuvent
+ * tourner en parallèle sans se gêner.
+ */
+export async function contributeurConnecte() {
+  const telephone = `229${Math.floor(90_000_000 + Math.random() * 9_999_999)}`;
+  const motDePasse = crypto.randomUUID();
+  const { data, error } = await admin.auth.admin.createUser({
+    phone: telephone,
+    password: motDePasse,
+    phone_confirm: true,
+  });
+  if (error || !data.user) throw error ?? new Error('Compte de test non créé');
+
+  const client = createClient(url!, cleAnonyme!, sansSession);
+  const connexion = await client.auth.signInWithPassword({ phone: telephone, password: motDePasse });
+  if (connexion.error) throw connexion.error;
+
+  const id = data.user.id;
+  return {
+    client,
+    id,
+    /** Supprime le compte et ses relevés (à appeler en fin de test). */
+    async nettoyer() {
+      await admin.from('releves').delete().eq('contributeur_id', id);
+      await admin.auth.admin.deleteUser(id);
+    },
+  };
+}
+
+/** Identifiants d'un produit et d'une unité du référentiel, par leur nom. */
+export async function identifiants(produit: string, unite: string) {
+  const [p, u] = await Promise.all([
+    admin.from('produits').select('id').eq('nom', produit).single(),
+    admin.from('unites').select('id').eq('symbole', unite).single(),
+  ]);
+  if (p.error) throw p.error;
+  if (u.error) throw u.error;
+  return { produit_id: p.data.id as number, unite_id: u.data.id as number };
 }

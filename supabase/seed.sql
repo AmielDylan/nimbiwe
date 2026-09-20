@@ -29,7 +29,7 @@ from (values
 where p.id = e.id;
 
 -- (auteur, marché, produit, unité, prix total, jours écoulés)
-insert into public.collectes (contributeur_id, marche_id, produit_id, unite_id, prix_total, observe_le)
+insert into public.releves (contributeur_id, marche_id, produit_id, unite_id, prix_total, observe_le)
 select e.auteur::uuid, m.id, p.id, u.id, e.prix, now() - make_interval(days => e.jours)
 from (values
   -- Ganhi : un relais suffit à publier.
@@ -53,4 +53,4 @@ from (values
 join public.marches m on m.nom = e.marche
 join public.produits p on p.nom = e.produit
 join public.unites u on u.symbole = e.unite;
--- « Dantokpa » reste volontairement sans collecte (état vide).
+-- « Dantokpa » reste volontairement sans relevé (état vide).

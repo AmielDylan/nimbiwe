@@ -11,7 +11,7 @@ describe('onglets', () => {
     renderRouter('./src/app');
 
     expect(screen.getByRole('button', { name: 'Prix, onglet 1 sur 3' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Collecter, onglet 2 sur 3' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Relever, onglet 2 sur 3' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Profil, onglet 3 sur 3' })).toBeOnTheScreen();
     expect(await screen.findByText('425 FCFA / kg')).toBeOnTheScreen();
   });
@@ -20,8 +20,8 @@ describe('onglets', () => {
     renderRouter('./src/app');
     await screen.findByText('425 FCFA / kg');
 
-    fireEvent.press(screen.getByRole('button', { name: 'Collecter, onglet 2 sur 3' }));
-    expect(screen.getByText('La collecte de prix arrive bientôt.')).toBeOnTheScreen();
+    fireEvent.press(screen.getByRole('button', { name: 'Relever, onglet 2 sur 3' }));
+    expect(await screen.findByText('Connectez-vous pour relever un prix.')).toBeOnTheScreen();
 
     fireEvent.press(screen.getByRole('button', { name: 'Profil, onglet 3 sur 3' }));
     expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
