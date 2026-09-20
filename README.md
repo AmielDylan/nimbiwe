@@ -24,7 +24,7 @@ Les tests d'API préparent leurs données avec la clé « Secret » de la base *
 
 ## Connexion par SMS en développement
 
-La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000112` (à saisir sans le « + », par exemple `01 97 00 00 00` ne correspond à aucun d'eux : utiliser `22900000101`) répondent tous avec le code fixe **123456**. Ils sont déclarés dans `supabase/config.toml` (`[auth.sms.test_otp]`) et ne doivent jamais être recopiés sur le projet distant.
+La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000112` (à saisir tels quels dans l'app) répondent tous avec le code fixe **123456**. Ils sont déclarés dans `supabase/config.toml` (`[auth.sms.test_otp]`) et ne doivent jamais être recopiés sur le projet distant.
 
 Le fournisseur SMS est factice en local : copier `supabase/.env.example` vers `supabase/.env` avant `npm run db:start`. Le fournisseur réel se configure sur le projet distant (pilote : Twilio, ouverture publique : BulkGate), ainsi que le délai minimal entre deux codes (`max_frequency`, 1 s en local pour les tests, à mettre à 60 s).
 
