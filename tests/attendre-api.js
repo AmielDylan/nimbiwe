@@ -6,7 +6,7 @@ require('./charger-env');
 module.exports = async function attendreApi() {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const cle = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !cle) return; // le test signalera la configuration manquante
+  if (!url || !cle) return; // le test échouera en indiquant la configuration manquante
 
   const limite = Date.now() + 30_000;
   for (;;) {

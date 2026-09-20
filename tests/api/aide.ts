@@ -24,7 +24,7 @@ export function ilYaJours(jours: number): string {
   return new Date(Date.now() - jours * JOUR).toISOString();
 }
 
-type Signalement = { prix: number; joursPasses?: number; quantite?: number };
+type Collecte = { prix: number; joursPasses?: number; quantite?: number };
 
 /**
  * Un marché jetable avec ses contributeurs : chaque test travaille sur son
@@ -63,13 +63,13 @@ export async function creerScenario() {
     return data.id as number;
   }
 
-  async function signaler(
+  async function collecter(
     contributeurId: string,
     produit: string,
     unite: string,
-    { prix, joursPasses = 0, quantite = 1 }: Signalement,
+    { prix, joursPasses = 0, quantite = 1 }: Collecte,
   ) {
-    const { error: erreur } = await admin.from('signalements').insert({
+    const { error: erreur } = await admin.from('collectes').insert({
       marche_id: marche.id,
       produit_id: await id('produits', 'nom', produit),
       unite_id: await id('unites', 'symbole', unite),
@@ -82,10 +82,10 @@ export async function creerScenario() {
   }
 
   async function nettoyer() {
-    await admin.from('signalements').delete().eq('marche_id', marche.id);
+    await admin.from('collectes').delete().eq('marche_id', marche.id);
     await admin.from('marches').delete().eq('id', marche.id);
     for (const utilisateur of contributeurs) await admin.auth.admin.deleteUser(utilisateur);
   }
 
-  return { marcheId: marche.id as number, contributeur, signaler, nettoyer };
+  return { marcheId: marche.id as number, contributeur, collecter, nettoyer };
 }

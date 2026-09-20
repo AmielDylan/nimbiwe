@@ -25,10 +25,10 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="signaler"
+        name="collecter"
         options={{
-          title: 'Signaler',
-          tabBarAccessibilityLabel: 'Signaler, onglet 2 sur 3',
+          title: 'Collecter',
+          tabBarAccessibilityLabel: 'Collecter, onglet 2 sur 3',
           tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" color={color} size={size} />,
         }}
       />

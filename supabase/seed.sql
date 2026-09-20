@@ -18,12 +18,11 @@ insert into public.profils (id, nom_affiche, est_relais) values
   ('00000000-0000-4000-8000-000000000005', 'Exemple – contributeur 3', false);
 
 -- (auteur, marché, produit, unité, prix total, jours écoulés)
-insert into public.signalements (contributeur_id, marche_id, produit_id, unite_id, prix_total, observe_le)
+insert into public.collectes (contributeur_id, marche_id, produit_id, unite_id, prix_total, observe_le)
 select e.auteur::uuid, m.id, p.id, u.id, e.prix, now() - make_interval(days => e.jours)
 from (values
   -- Ganhi : un relais suffit à publier.
   ('00000000-0000-4000-8000-000000000001', 'Ganhi', 'maïs', 'kg', 425, 0),
-  ('00000000-0000-4000-8000-000000000001', 'Ganhi', 'maïs', 'bol', 300, 1),
   ('00000000-0000-4000-8000-000000000001', 'Ganhi', 'riz', 'kg', 650, 1),
   ('00000000-0000-4000-8000-000000000001', 'Ganhi', 'gari', 'kg', 550, 2),
   ('00000000-0000-4000-8000-000000000001', 'Ganhi', 'huile végétale', 'L', 1500, 2),
@@ -43,4 +42,4 @@ from (values
 join public.marches m on m.nom = e.marche
 join public.produits p on p.nom = e.produit
 join public.unites u on u.symbole = e.unite;
--- « Cotonou (provisoire) » reste volontairement sans signalement (état vide).
+-- « Dantokpa » reste volontairement sans collecte (état vide).

@@ -17,15 +17,15 @@ const ganhiSucre = prixCourant({
   produit_id: 2,
   produit: 'sucre',
   prix: 812.4,
-  nombre_signalements: 1,
-  dernier_signalement_le: ilYaJours(0),
+  nombre_collectes: 1,
+  derniere_collecte_le: ilYaJours(0),
 });
 const ouandoMais = prixCourant({
   marche_id: 2,
   marche: 'Ouando',
   prix: 1500,
-  nombre_signalements: 5,
-  dernier_signalement_le: ilYaJours(1),
+  nombre_collectes: 5,
+  derniere_collecte_le: ilYaJours(1),
 });
 const ouandoSucreInsuffisant = prixCourant({
   produit_id: 2,
@@ -34,8 +34,8 @@ const ouandoSucreInsuffisant = prixCourant({
   marche: 'Ouando',
   statut: 'pas_assez_de_donnees',
   prix: null,
-  nombre_signalements: 2,
-  dernier_signalement_le: ilYaJours(12),
+  nombre_collectes: 2,
+  derniere_collecte_le: ilYaJours(12),
 });
 
 const donnees = {
@@ -45,7 +45,7 @@ const donnees = {
 };
 
 describe('écran Prix', () => {
-  it("affiche le prix courant avec son unité, le nombre de signalements et son ancienneté", async () => {
+  it("affiche le prix courant avec son unité, le nombre de collectes et son ancienneté", async () => {
     simulerApi({ ...donnees, prix_courants: [ganhiMais] });
 
     render(<Prix />);
@@ -54,24 +54,24 @@ describe('écran Prix', () => {
     expect(carte.getByText('Maïs')).toBeOnTheScreen();
     expect(carte.getByText('Ganhi')).toBeOnTheScreen();
     expect(carte.getByText('425 FCFA / kg')).toBeOnTheScreen();
-    expect(carte.getByText('3 signalements sur 7 jours')).toBeOnTheScreen();
-    expect(carte.getByText('Dernier signalement : il y a 2 jours')).toBeOnTheScreen();
+    expect(carte.getByText('3 collectes sur 7 jours')).toBeOnTheScreen();
+    expect(carte.getByText('Dernière collecte : il y a 2 jours')).toBeOnTheScreen();
   });
 
-  it('arrondit le prix, met les milliers en forme et accorde « signalement » au singulier', async () => {
+  it('arrondit le prix, met les milliers en forme et accorde « collecte » au singulier', async () => {
     simulerApi({
       ...donnees,
-      prix_courants: [prixCourant({ prix: 1234.6, nombre_signalements: 1, dernier_signalement_le: ilYaJours(0) })],
+      prix_courants: [prixCourant({ prix: 1234.6, nombre_collectes: 1, derniere_collecte_le: ilYaJours(0) })],
     });
 
     render(<Prix />);
 
     expect(await screen.findByText('1 235 FCFA / kg')).toBeOnTheScreen();
-    expect(screen.getByText('1 signalement sur 7 jours')).toBeOnTheScreen();
-    expect(screen.getByText('Dernier signalement : aujourd’hui')).toBeOnTheScreen();
+    expect(screen.getByText('1 collecte sur 7 jours')).toBeOnTheScreen();
+    expect(screen.getByText('Dernière collecte : aujourd’hui')).toBeOnTheScreen();
   });
 
-  it('dit « pas assez de données » avec la date du dernier signalement, sans afficher de prix', async () => {
+  it('dit « pas assez de données » avec la date de la dernière collecte, sans afficher de prix', async () => {
     simulerApi({ ...donnees, prix_courants: [ouandoSucreInsuffisant] });
 
     render(<Prix />);
@@ -79,7 +79,7 @@ describe('écran Prix', () => {
     const carte = within(await screen.findByTestId('carte-prix'));
     expect(carte.getByText('Sucre')).toBeOnTheScreen();
     expect(carte.getByText('Pas assez de données')).toBeOnTheScreen();
-    expect(carte.getByText('Dernier signalement : il y a 12 jours')).toBeOnTheScreen();
+    expect(carte.getByText('Dernière collecte : il y a 12 jours')).toBeOnTheScreen();
     expect(carte.queryByText(/FCFA/)).not.toBeOnTheScreen();
   });
 
@@ -115,7 +115,7 @@ describe('écran Prix', () => {
     render(<Prix />);
     await screen.findAllByTestId('carte-prix');
 
-    fireEvent.press(screen.getByRole('button', { name: 'Cotonou (provisoire)' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Dantokpa' }));
 
     expect(screen.getByText('Aucun prix pour ce marché pour le moment.')).toBeOnTheScreen();
   });
@@ -125,7 +125,7 @@ describe('écran Prix', () => {
     render(<Prix />);
     await screen.findAllByTestId('carte-prix');
 
-    fireEvent.press(screen.getByRole('button', { name: 'Cotonou (provisoire)' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Dantokpa' }));
     fireEvent.press(screen.getByRole('button', { name: 'Sucre' }));
 
     expect(screen.getByText('Aucun prix pour cette sélection pour le moment.')).toBeOnTheScreen();

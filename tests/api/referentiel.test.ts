@@ -13,7 +13,7 @@ describe('référentiel', () => {
         { nom: 'Ganhi' },
         { nom: 'Ouando' },
         { nom: 'Bohicon' },
-        { nom: 'Cotonou (provisoire)' },
+        { nom: 'Dantokpa' },
       ]),
     );
   });
@@ -30,7 +30,7 @@ describe('référentiel', () => {
     );
   });
 
-  it('un lecteur anonyme voit les quatre unités', async () => {
+  it('un lecteur anonyme voit les trois unités standard', async () => {
     const { data, error } = await lecteurAnonyme.from('unites').select('symbole, type').order('symbole');
 
     expect(error).toBeNull();
@@ -39,24 +39,24 @@ describe('référentiel', () => {
         { symbole: 'kg', type: 'standard' },
         { symbole: 'L', type: 'standard' },
         { symbole: 'pièce', type: 'standard' },
-        { symbole: 'bol', type: 'locale' },
       ]),
     );
-    expect(data).toHaveLength(4);
+    expect(data).toHaveLength(3);
   });
 
   it("chaque produit n'est proposé que dans ses unités valides", async () => {
     const { data, error } = await lecteurAnonyme
       .from('produits')
       .select('nom, unites(symbole)')
-      .in('nom', ['maïs', 'huile végétale', 'œufs']);
+      .in('nom', ['maïs', 'igname', 'huile végétale', 'œufs']);
 
     expect(error).toBeNull();
     const parProduit = Object.fromEntries(
       (data ?? []).map((produit) => [produit.nom, produit.unites.map((u) => u.symbole).sort()]),
     );
     expect(parProduit).toEqual({
-      maïs: ['bol', 'kg'],
+      maïs: ['kg'],
+      igname: ['kg', 'pièce'],
       'huile végétale': ['L'],
       œufs: ['pièce'],
     });
@@ -65,7 +65,7 @@ describe('référentiel', () => {
   it('un lecteur anonyme ne peut modifier aucune donnée du référentiel', async () => {
     // Des lignes valides : seul un refus de la sécurité peut les faire échouer.
     const { data: huile } = await admin.from('produits').select('id').eq('nom', 'huile végétale').single();
-    const { data: bol } = await admin.from('unites').select('id').eq('symbole', 'bol').single();
+    const { data: piece } = await admin.from('unites').select('id').eq('symbole', 'pièce').single();
 
     const produit = await lecteurAnonyme.from('produits').insert({ nom: 'produit pirate' });
     const unite = await lecteurAnonyme
@@ -73,7 +73,7 @@ describe('référentiel', () => {
       .insert({ nom: 'unité pirate', symbole: 'x', type: 'standard' });
     const lien = await lecteurAnonyme
       .from('produits_unites')
-      .insert({ produit_id: huile!.id, unite_id: bol!.id });
+      .insert({ produit_id: huile!.id, unite_id: piece!.id });
 
     expect(produit.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
     expect(unite.error?.code).toBe(REFUSE_PAR_LA_SECURITE);

@@ -5,8 +5,8 @@ create table public.unites (
   nom text not null unique,
   symbole text not null unique,
   -- 'standard' : quantité fixe (kg, litre, pièce). 'locale' : quantité variable
-  -- selon le vendeur (bol), comparable à elle-même tant qu'aucune conversion
-  -- n'est renseignée.
+  -- selon le vendeur (bol, tas…). Aucune mesure locale en V0 : elles ne sont pas
+  -- encore normalisées et seront ajoutées avec leurs conversions.
   type text not null check (type in ('standard', 'locale'))
 );
 
@@ -36,8 +36,7 @@ create policy "Les unités valides sont lisibles par tous"
 insert into public.unites (nom, symbole, type) values
   ('kilogramme', 'kg', 'standard'),
   ('litre', 'L', 'standard'),
-  ('pièce', 'pièce', 'standard'),
-  ('bol', 'bol', 'locale');
+  ('pièce', 'pièce', 'standard');
 
 insert into public.produits (nom) values
   ('maïs'), ('riz'), ('gari'), ('haricot'), ('igname'), ('tomate'),
@@ -46,14 +45,14 @@ insert into public.produits (nom) values
 insert into public.produits_unites (produit_id, unite_id)
 select p.id, u.id
 from (values
-  ('maïs', 'kg'), ('maïs', 'bol'),
-  ('riz', 'kg'), ('riz', 'bol'),
-  ('gari', 'kg'), ('gari', 'bol'),
-  ('haricot', 'kg'), ('haricot', 'bol'),
+  ('maïs', 'kg'),
+  ('riz', 'kg'),
+  ('gari', 'kg'),
+  ('haricot', 'kg'),
   ('igname', 'kg'), ('igname', 'pièce'),
-  ('tomate', 'kg'), ('tomate', 'bol'),
-  ('oignon', 'kg'), ('oignon', 'bol'),
-  ('piment', 'kg'), ('piment', 'bol'),
+  ('tomate', 'kg'),
+  ('oignon', 'kg'),
+  ('piment', 'kg'),
   ('huile végétale', 'L'),
   ('huile de palme', 'L'),
   ('sucre', 'kg'),
@@ -62,8 +61,8 @@ from (values
 join public.produits p on p.nom = valides.produit
 join public.unites u on u.symbole = valides.unite;
 
--- Marchés de détail de la V0. Dantokpa a fermé définitivement le 2 mai 2026 ;
--- le marché de détail de Cotonou reste à choisir après une visite sur place et
--- remplacera « Cotonou (provisoire) ».
+-- Marchés de détail de la V0. « Dantokpa » tient lieu de marché provisoire pour
+-- Cotonou : il sera remplacé par le marché de détail choisi après une visite sur
+-- place (Dantokpa a fermé définitivement le 2 mai 2026).
 insert into public.marches (nom) values
-  ('Ganhi'), ('Ouando'), ('Bohicon'), ('Cotonou (provisoire)');
+  ('Ganhi'), ('Ouando'), ('Bohicon'), ('Dantokpa');
