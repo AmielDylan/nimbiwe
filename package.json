@@ -14,7 +14,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@expo/vector-icons": "^15.0.2",
     "@supabase/supabase-js": "^2.116.0",
     "expo": "~57.0.24",
     "expo-asset": "~57.0.18",
@@ -27,7 +26,9 @@
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "~4.26.0"
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "reicon-react-native": "^1.0.103"
   },
   "devDependencies": {
     "@testing-library/react-native": "^13.3.3",
