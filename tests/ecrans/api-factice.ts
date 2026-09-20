@@ -7,12 +7,7 @@ import type { PrixCourant, Reference } from '@/screens/prix/use-prix';
 export type Marche = Reference;
 export type Produit = Reference;
 export type { PrixCourant };
-/** `prix_courants` peut dépendre de la période demandée (en jours). */
-export type Donnees = {
-  marches: Marche[];
-  produits: Produit[];
-  prix_courants: PrixCourant[] | ((jours: number) => PrixCourant[]);
-};
+export type Donnees = { marches: Marche[]; produits: Produit[]; prix_courants: PrixCourant[] };
 
 const JOUR = 24 * 60 * 60 * 1000;
 
@@ -36,22 +31,13 @@ function table(requete: RequestInfo | URL): keyof Donnees {
   return new URL(adresse).pathname.split('/').pop() as keyof Donnees;
 }
 
-/** Ce que renvoie l'API pour cette requête ; la période vient du corps de l'appel à la fonction. */
-function reponse(donnees: Donnees, requete: RequestInfo | URL, init?: RequestInit) {
-  const nom = table(requete);
-  const contenu = donnees[nom];
-  if (typeof contenu !== 'function') return contenu;
-  const { jours = 7 } = init?.body ? JSON.parse(String(init.body)) : {};
-  return contenu(jours);
-}
-
 const fetchFactice = () => globalThis.fetch as jest.Mock;
 
 /** L'API répond avec ces données (fonction : relue à chaque requête, pour simuler un changement). */
 export function simulerApi(donnees: Donnees | (() => Donnees)) {
-  fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
+  fetchFactice().mockImplementation(async (requete: RequestInfo | URL) => {
     const courantes = typeof donnees === 'function' ? donnees() : donnees;
-    return json(reponse(courantes, requete, init));
+    return json(courantes[table(requete)]);
   });
 }
 
@@ -64,9 +50,9 @@ export function simulerPanne() {
 export function simulerApiLente(donnees: Donnees) {
   let repondre: () => void = () => {};
   const attente = new Promise<void>((resolve) => (repondre = resolve));
-  fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
+  fetchFactice().mockImplementation(async (requete: RequestInfo | URL) => {
     await attente;
-    return json(reponse(donnees, requete, init));
+    return json(donnees[table(requete)]);
   });
   return repondre;
 }

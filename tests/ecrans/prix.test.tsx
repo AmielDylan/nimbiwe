@@ -155,40 +155,6 @@ describe('écran Prix', () => {
     }
   });
 
-  it("propose de resserrer ou d'élargir la période des prix courants, sur 7 jours par défaut", async () => {
-    simulerApi({
-      ...donnees,
-      prix_courants: (jours) => [prixCourant({ prix: jours === 3 ? 480 : 425, nombre_collectes: jours })],
-    });
-    render(<Prix />);
-    await screen.findByText('425 FCFA / kg');
-
-    expect(screen.getByRole('button', { name: '7 jours' })).toBeSelected();
-    expect(screen.getByText('7 collectes sur 7 jours')).toBeOnTheScreen();
-
-    fireEvent.press(screen.getByRole('button', { name: '3 jours' }));
-
-    expect(await screen.findByText('480 FCFA / kg')).toBeOnTheScreen();
-    expect(screen.getByText('3 collectes sur 3 jours')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: '3 jours' })).toBeSelected();
-    expect(screen.getByRole('button', { name: '7 jours' })).not.toBeSelected();
-    expect(screen.getByRole('button', { name: '1 jour' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: '30 jours' })).toBeOnTheScreen();
-  });
-
-  it("garde la période précédente quand le changement de période échoue", async () => {
-    simulerApi({ ...donnees, prix_courants: [ganhiMais] });
-    render(<Prix />);
-    await screen.findByText('425 FCFA / kg');
-
-    simulerPanne();
-    fireEvent.press(screen.getByRole('button', { name: '1 jour' }));
-
-    expect(await screen.findByText('Actualisation impossible. Vérifiez votre connexion.')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: '7 jours' })).toBeSelected();
-    expect(screen.getByText('425 FCFA / kg')).toBeOnTheScreen();
-  });
-
   it('affiche un état de chargement', async () => {
     const repondre = simulerApiLente(donnees);
 

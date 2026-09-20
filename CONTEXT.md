@@ -11,7 +11,7 @@ Un prix saisi par un utilisateur pour un produit, sur un marché, dans une unit�
 _Avoid_: Signalement, signaler (évoquent une alerte ou un bug), relevé, contribution, entrée, report
 
 **Prix courant**:
-La médiane des collectes récentes d'un même produit, sur un même marché, dans une même unité. La période « récente » est de 7 jours par défaut ; le lecteur peut la resserrer (1 jour, 3 jours…) ou l'élargir.
+La médiane des collectes des 7 derniers jours d'un même produit, sur un même marché, dans une même unité.
 _Avoid_: Prix du jour, prix moyen, cours
 
 **Bornes plausibles**:

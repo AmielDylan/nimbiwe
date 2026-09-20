@@ -37,13 +37,7 @@ export function formaterAnciennete(dateIso: string): string {
   return `il y a ${Math.floor(jours / 30)} mois`;
 }
 
-function libellePeriode(jours: number): string {
-  return `${jours} jour${jours > 1 ? 's' : ''}`;
+export function formaterNombreDeCollectes(nombre: number): string {
+  if (nombre === 0) return 'Aucune collecte sur 7 jours';
+  return `${nombre} collecte${nombre > 1 ? 's' : ''} sur 7 jours`;
 }
-
-export function formaterNombreDeCollectes(nombre: number, jours: number): string {
-  if (nombre === 0) return `Aucune collecte sur ${libellePeriode(jours)}`;
-  return `${nombre} collecte${nombre > 1 ? 's' : ''} sur ${libellePeriode(jours)}`;
-}
-
-export { libellePeriode };
