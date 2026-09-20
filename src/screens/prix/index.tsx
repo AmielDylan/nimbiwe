@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme';
@@ -8,32 +7,27 @@ import { Filtres } from './filtres';
 import { capitaliser } from './formats';
 import { usePrix } from './use-prix';
 
-function messageVide(marche: boolean, produit: boolean): string {
-  if (marche && produit) return 'Aucun prix pour cette sélection pour le moment.';
-  if (marche) return 'Aucun prix pour ce marché pour le moment.';
-  if (produit) return 'Aucun prix pour ce produit pour le moment.';
-  return 'Aucun prix pour le moment.';
-}
-
 export function Prix() {
   const theme = useTheme();
-  const { etat, actualisation, actualiser, reessayer } = usePrix();
-  const [marcheId, setMarcheId] = useState<number | null>(null);
-  const [produitId, setProduitId] = useState<number | null>(null);
-
-  const prix =
-    etat.statut === 'pret'
-      ? etat.prix.filter(
-          (p) => (marcheId === null || p.marche_id === marcheId) && (produitId === null || p.produit_id === produitId),
-        )
-      : [];
+  const {
+    etat,
+    actualisation,
+    actualiser,
+    reessayer,
+    marcheId,
+    choisirMarche,
+    produitId,
+    choisirProduit,
+    prixAffiches,
+    messageVide,
+  } = usePrix();
 
   return (
     <FlatList
       testID="liste-prix"
       style={{ backgroundColor: theme.fond }}
       contentContainerStyle={styles.contenu}
-      data={prix}
+      data={prixAffiches}
       keyExtractor={(p) => `${p.marche_id}-${p.produit_id}-${p.unite_id}`}
       renderItem={({ item }) => <CartePrix prix={item} />}
       refreshControl={<RefreshControl refreshing={actualisation} onRefresh={actualiser} />}
@@ -49,13 +43,13 @@ export function Prix() {
               toutLibelle="Tous les marchés"
               options={etat.marches.map((m) => ({ id: m.id, libelle: m.nom }))}
               selection={marcheId}
-              onChoisir={setMarcheId}
+              onChoisir={choisirMarche}
             />
             <Filtres
               toutLibelle="Tous les produits"
               options={etat.produits.map((p) => ({ id: p.id, libelle: capitaliser(p.nom) }))}
               selection={produitId}
-              onChoisir={setProduitId}
+              onChoisir={choisirProduit}
             />
           </View>
         ) : null
@@ -82,9 +76,7 @@ export function Prix() {
             </>
           )}
           {etat.statut === 'pret' && (
-            <Text style={[styles.message, { color: theme.texteSecondaire }]}>
-              {messageVide(marcheId !== null, produitId !== null)}
-            </Text>
+            <Text style={[styles.message, { color: theme.texteSecondaire }]}>{messageVide}</Text>
           )}
         </View>
       }

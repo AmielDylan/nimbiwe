@@ -2,20 +2,11 @@
  * Remplace l'accès aux données à la frontière du client : le vrai client
  * Supabase tourne, mais son `fetch` répond avec ce que renverrait l'API.
  */
-export type Marche = { id: number; nom: string };
-export type Produit = { id: number; nom: string };
-export type PrixCourant = {
-  produit_id: number;
-  unite_id: number;
-  marche_id: number;
-  produit: string;
-  unite: string;
-  marche: string;
-  statut: 'publie' | 'pas_assez_de_donnees';
-  prix: number | null;
-  nombre_signalements: number;
-  derniere_observation: string;
-};
+import type { PrixCourant, Reference } from '@/screens/prix/use-prix';
+
+export type Marche = Reference;
+export type Produit = Reference;
+export type { PrixCourant };
 export type Donnees = { marches: Marche[]; produits: Produit[]; prix_courants: PrixCourant[] };
 
 const JOUR = 24 * 60 * 60 * 1000;
@@ -84,7 +75,7 @@ export function prixCourant(surcharge: Partial<PrixCourant>): PrixCourant {
     statut: 'publie',
     prix: 425,
     nombre_signalements: 3,
-    derniere_observation: ilYaJours(2),
+    dernier_signalement_le: ilYaJours(2),
     ...surcharge,
   };
 }

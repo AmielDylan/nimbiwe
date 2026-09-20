@@ -16,7 +16,8 @@ function debutDeJour(date: Date): number {
 }
 
 /** Ancienneté en jours calendaires : « aujourd’hui », « hier », « il y a 3 jours », « il y a 2 mois ». */
-export function formaterAnciennete(dateIso: string, maintenant: Date = new Date()): string {
+export function formaterAnciennete(dateIso: string): string {
+  const maintenant = new Date();
   const jours = Math.max(0, Math.round((debutDeJour(maintenant) - debutDeJour(new Date(dateIso))) / JOUR));
   if (jours === 0) return 'aujourd’hui';
   if (jours === 1) return 'hier';

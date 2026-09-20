@@ -94,7 +94,7 @@ describe('publication', () => {
     const [prix] = await lirePrix();
 
     expect(prix).toMatchObject({ statut: 'pas_assez_de_donnees', prix: null, nombre_signalements: 2 });
-    expect(new Date(prix.derniere_observation).getTime()).toBeCloseTo(
+    expect(new Date(prix.dernier_signalement_le).getTime()).toBeCloseTo(
       new Date(ilYaJours(1)).getTime(),
       -4, // à quelques secondes près
     );
@@ -119,34 +119,88 @@ describe('publication', () => {
     const [prix] = await lirePrix();
 
     expect(prix).toMatchObject({ statut: 'pas_assez_de_donnees', prix: null, nombre_signalements: 0 });
-    expect(new Date(prix.derniere_observation).getTime()).toBeCloseTo(
+    expect(new Date(prix.dernier_signalement_le).getTime()).toBeCloseTo(
       new Date(ilYaJours(10)).getTime(),
       -4,
     );
   });
+
+  it("un ancien signalement de relais ne suffit pas à publier deux signalements récents de contributeurs", async () => {
+    const relais = await scenario.contributeur({ relais: true });
+    const a = await scenario.contributeur();
+    const b = await scenario.contributeur();
+    await scenario.signaler(relais, 'haricot', 'kg', { prix: 900, joursPasses: 9 });
+    await scenario.signaler(a, 'haricot', 'kg', { prix: 950 });
+    await scenario.signaler(b, 'haricot', 'kg', { prix: 1000 });
+
+    const [prix] = await lirePrix();
+
+    expect(prix).toMatchObject({ statut: 'pas_assez_de_donnees', prix: null, nombre_signalements: 2 });
+  });
+});
+
+describe('unités', () => {
+  it("un signalement dans une unité non valide pour le produit est rejeté", async () => {
+    const relais = await scenario.contributeur({ relais: true });
+
+    await expect(scenario.signaler(relais, 'huile végétale', 'kg', { prix: 1500 })).rejects.toMatchObject({
+      code: '23503', // clé étrangère : (huile végétale, kg) n'est pas une paire valide
+    });
+  });
 });
 
 describe('lecteur anonyme : lecture seule', () => {
-  it('ne peut ni créer un signalement ni se donner le statut de relais', async () => {
-    const auteur = await scenario.contributeur();
+  // Code Postgres « insufficient_privilege » : refus par la sécurité par ligne.
+  const REFUSE_PAR_LA_SECURITE = '42501';
 
-    const signalement = await lecteurAnonyme.from('signalements').insert({
+  it('ne peut ni créer un signalement ni en modifier ou supprimer un, ni se donner le statut de relais', async () => {
+    const auteur = await scenario.contributeur();
+    await scenario.signaler(auteur, 'maïs', 'kg', { prix: 400 });
+    const { data: maisKg } = await admin
+      .from('prix_courants')
+      .select('produit_id, unite_id')
+      .eq('marche_id', scenario.marcheId)
+      .single();
+
+    // Un signalement valide : seul un refus de la sécurité peut le faire échouer.
+    const creation = await lecteurAnonyme.from('signalements').insert({
       marche_id: scenario.marcheId,
-      produit_id: 1,
-      unite_id: 1,
+      produit_id: maisKg!.produit_id,
+      unite_id: maisKg!.unite_id,
       contributeur_id: auteur,
       prix_total: 1,
     });
+    const modification = await lecteurAnonyme
+      .from('signalements')
+      .update({ prix_total: 1 })
+      .eq('contributeur_id', auteur)
+      .select();
+    const suppression = await lecteurAnonyme
+      .from('signalements')
+      .delete()
+      .eq('contributeur_id', auteur)
+      .select();
+    const profil = await lecteurAnonyme.from('profils').insert({ id: crypto.randomUUID() });
     const promotion = await lecteurAnonyme
       .from('profils')
       .update({ est_relais: true })
       .eq('id', auteur)
       .select();
 
-    expect(signalement.error).not.toBeNull();
+    expect(creation.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
+    expect(profil.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
+    expect(modification.data ?? []).toEqual([]);
+    expect(suppression.data ?? []).toEqual([]);
     expect(promotion.data ?? []).toEqual([]);
-    const { data: profil } = await admin.from('profils').select('est_relais').eq('id', auteur).single();
-    expect(profil?.est_relais).toBe(false);
+
+    // Rien n'a bougé côté base.
+    const { data: signalements } = await admin
+      .from('signalements')
+      .select('prix_total')
+      .eq('marche_id', scenario.marcheId);
+    expect(signalements).toEqual([{ prix_total: 400 }]);
+    const { data: profilAuteur } = await admin.from('profils').select('est_relais').eq('id', auteur).single();
+    expect(profilAuteur?.est_relais).toBe(false);
   });
 
   it("ne peut lire ni les signalements bruts ni les profils", async () => {

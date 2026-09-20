@@ -25,7 +25,7 @@ export function CartePrix({ prix }: { prix: PrixCourant }) {
         {formaterNombreDeSignalements(prix.nombre_signalements)}
       </Text>
       <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
-        {`Dernier signalement : ${formaterAnciennete(prix.derniere_observation)}`}
+        {`Dernier signalement : ${formaterAnciennete(prix.dernier_signalement_le)}`}
       </Text>
     </View>
   );

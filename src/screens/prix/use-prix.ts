@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
@@ -12,12 +12,13 @@ export type PrixCourant = {
   statut: 'publie' | 'pas_assez_de_donnees';
   prix: number | null;
   nombre_signalements: number;
-  derniere_observation: string;
+  dernier_signalement_le: string;
 };
 
-export type Element = { id: number; nom: string };
+/** Une ligne du référentiel (marché ou produit). */
+export type Reference = { id: number; nom: string };
 
-type Donnees = { prix: PrixCourant[]; marches: Element[]; produits: Element[] };
+type Donnees = { prix: PrixCourant[]; marches: Reference[]; produits: Reference[] };
 
 type Etat =
   | { statut: 'chargement' }
@@ -39,14 +40,27 @@ async function charger(): Promise<Donnees> {
   };
 }
 
+async function chargerEtat(): Promise<Etat> {
+  return { statut: 'pret', actualisationEchouee: false, ...(await charger()) };
+}
+
+function messageVide(marche: boolean, produit: boolean): string {
+  if (marche && produit) return 'Aucun prix pour cette sélection pour le moment.';
+  if (marche) return 'Aucun prix pour ce marché pour le moment.';
+  if (produit) return 'Aucun prix pour ce produit pour le moment.';
+  return 'Aucun prix pour le moment.';
+}
+
 export function usePrix() {
   const [etat, setEtat] = useState<Etat>({ statut: 'chargement' });
   const [actualisation, setActualisation] = useState(false);
+  const [marcheId, setMarcheId] = useState<number | null>(null);
+  const [produitId, setProduitId] = useState<number | null>(null);
 
   const chargerPremiereFois = useCallback(async () => {
     setEtat({ statut: 'chargement' });
     try {
-      setEtat({ statut: 'pret', actualisationEchouee: false, ...(await charger()) });
+      setEtat(await chargerEtat());
     } catch {
       setEtat({ statut: 'erreur' });
     }
@@ -56,7 +70,7 @@ export function usePrix() {
   const actualiser = useCallback(async () => {
     setActualisation(true);
     try {
-      setEtat({ statut: 'pret', actualisationEchouee: false, ...(await charger()) });
+      setEtat(await chargerEtat());
     } catch {
       setEtat((courant) =>
         courant.statut === 'pret' ? { ...courant, actualisationEchouee: true } : { statut: 'erreur' },
@@ -70,5 +84,26 @@ export function usePrix() {
     chargerPremiereFois();
   }, [chargerPremiereFois]);
 
-  return { etat, actualisation, actualiser, reessayer: chargerPremiereFois };
+  const prixAffiches = useMemo(
+    () =>
+      etat.statut === 'pret'
+        ? etat.prix.filter(
+            (p) => (marcheId === null || p.marche_id === marcheId) && (produitId === null || p.produit_id === produitId),
+          )
+        : [],
+    [etat, marcheId, produitId],
+  );
+
+  return {
+    etat,
+    actualisation,
+    actualiser,
+    reessayer: chargerPremiereFois,
+    marcheId,
+    choisirMarche: setMarcheId,
+    produitId,
+    choisirProduit: setProduitId,
+    prixAffiches,
+    messageVide: messageVide(marcheId !== null, produitId !== null),
+  };
 }

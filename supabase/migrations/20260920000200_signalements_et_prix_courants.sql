@@ -41,7 +41,7 @@ alter table public.signalements enable row level security;
 -- Prix courant : médiane du prix unitaire des signalements des 7 derniers
 -- jours, pour un même produit, marché et unité. Publié seulement si au moins un
 -- relais a signalé, ou si au moins trois contributeurs différents ont signalé ;
--- sinon `prix` est nul et `derniere_observation` indique le dernier signalement.
+-- sinon `prix` est nul et `dernier_signalement_le` indique le dernier signalement.
 --
 -- La vue s'exécute avec les droits de son propriétaire : c'est voulu, elle est
 -- la seule porte de lecture vers les signalements et les profils.
@@ -68,7 +68,7 @@ agregats as (
     (count(*) filter (where recent and est_relais) >= 1
       or count(distinct contributeur_id) filter (where recent) >= 3) as publiable,
     percentile_cont(0.5) within group (order by prix_unitaire) filter (where recent) as mediane,
-    max(observe_le) as derniere_observation
+    max(observe_le) as dernier_signalement_le
   from signalements_qualifies
   group by produit_id, unite_id, marche_id
 )
@@ -82,7 +82,7 @@ select
   case when a.publiable then 'publie' else 'pas_assez_de_donnees' end as statut,
   case when a.publiable then a.mediane end as prix,
   a.nombre_signalements,
-  a.derniere_observation
+  a.dernier_signalement_le
 from agregats a
 join public.produits p on p.id = a.produit_id
 join public.unites u on u.id = a.unite_id

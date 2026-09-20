@@ -18,14 +18,14 @@ const ganhiSucre = prixCourant({
   produit: 'sucre',
   prix: 812.4,
   nombre_signalements: 1,
-  derniere_observation: ilYaJours(0),
+  dernier_signalement_le: ilYaJours(0),
 });
 const ouandoMais = prixCourant({
   marche_id: 2,
   marche: 'Ouando',
   prix: 1500,
   nombre_signalements: 5,
-  derniere_observation: ilYaJours(1),
+  dernier_signalement_le: ilYaJours(1),
 });
 const ouandoSucreInsuffisant = prixCourant({
   produit_id: 2,
@@ -35,7 +35,7 @@ const ouandoSucreInsuffisant = prixCourant({
   statut: 'pas_assez_de_donnees',
   prix: null,
   nombre_signalements: 2,
-  derniere_observation: ilYaJours(12),
+  dernier_signalement_le: ilYaJours(12),
 });
 
 const donnees = {
@@ -61,7 +61,7 @@ describe('écran Prix', () => {
   it('arrondit le prix, met les milliers en forme et accorde « signalement » au singulier', async () => {
     simulerApi({
       ...donnees,
-      prix_courants: [prixCourant({ prix: 1234.6, nombre_signalements: 1, derniere_observation: ilYaJours(0) })],
+      prix_courants: [prixCourant({ prix: 1234.6, nombre_signalements: 1, dernier_signalement_le: ilYaJours(0) })],
     });
 
     render(<Prix />);
@@ -118,6 +118,17 @@ describe('écran Prix', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Cotonou (provisoire)' }));
 
     expect(screen.getByText('Aucun prix pour ce marché pour le moment.')).toBeOnTheScreen();
+  });
+
+  it("indique qu'aucun prix ne correspond à la combinaison d'un marché et d'un produit", async () => {
+    simulerApi(donnees);
+    render(<Prix />);
+    await screen.findAllByTestId('carte-prix');
+
+    fireEvent.press(screen.getByRole('button', { name: 'Cotonou (provisoire)' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Sucre' }));
+
+    expect(screen.getByText('Aucun prix pour cette sélection pour le moment.')).toBeOnTheScreen();
   });
 
   it('affiche un état de chargement', async () => {
