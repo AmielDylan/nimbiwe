@@ -7,6 +7,7 @@ module.exports = {
       displayName: 'api',
       testEnvironment: 'node',
       testMatch: ['<rootDir>/tests/api/**/*.test.ts'],
+      globalSetup: '<rootDir>/tests/attendre-api.js',
       setupFiles: ['<rootDir>/tests/charger-env.js'],
       transform: {
         '^.+\\.tsx?$': [
@@ -22,7 +23,7 @@ module.exports = {
       displayName: 'ecrans',
       preset: 'jest-expo',
       setupFiles: ['<rootDir>/tests/preparer-ecrans.js'],
-      testMatch: ['<rootDir>/tests/ecrans/**/*.test.tsx', '<rootDir>/src/**/*.test.tsx'],
+      testMatch: ['<rootDir>/tests/ecrans/**/*.test.tsx'],
     },
   ],
 };

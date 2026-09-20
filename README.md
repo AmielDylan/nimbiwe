@@ -6,7 +6,7 @@ Le vocabulaire du domaine est dans [CONTEXT.md](CONTEXT.md) et les décisions d'
 
 ## Prérequis
 
-- Node.js 22 ou plus
+- Node.js 22.13 ou plus (ou 24.3+, ou 20.19.4+) : versions acceptées par Expo 57
 - Un environnement Docker pour la base locale (OrbStack sur Mac) : il doit tourner avant `npm run db:start`
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
 - Xcode et son simulateur iPhone
@@ -28,7 +28,7 @@ npm run db:reset   # recrée la base : migrations puis données de départ
 npm run db:stop    # arrête la base
 ```
 
-Les migrations sont dans `supabase/migrations/` et les données de départ dans `supabase/seed.sql`. Attendre quelques secondes après `db:reset` avant de lancer les tests d'API, le temps que l'API redémarre.
+Les migrations sont dans `supabase/migrations/` et les données de départ dans `supabase/seed.sql`.
 
 ## Lancer l'app
 
@@ -47,8 +47,8 @@ npm run typecheck  # vérification des types
 
 Une seule commande lance deux familles de tests :
 
-- **API** (`tests/api/`) : le vrai client Supabase contre la base locale. La base doit être démarrée.
-- **Écrans** (`tests/ecrans/`) : rendu des écrans dans l'environnement de test Expo, avec l'accès aux données remplacé à la frontière du client de données.
+- **API** (`tests/api/`) : le vrai client Supabase contre la base locale. La base doit être démarrée ; les tests attendent jusqu'à 30 secondes que l'API réponde (elle redémarre après `db:reset`).
+- **Écrans** (`tests/ecrans/`) : rendu des écrans dans l'environnement de test Expo. Quand les écrans liront des données, l'accès sera remplacé à la frontière du client de données.
 
 Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectProjects ecrans`.
 
@@ -57,5 +57,4 @@ Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectP
 - `src/app/` : routes uniquement, sans logique métier
 - `src/screens/` : corps des écrans
 - `src/components/` : composants réutilisables
-- `src/lib/` : client Supabase
 - `supabase/` : configuration, migrations et données de départ
