@@ -35,3 +35,13 @@ Aucune exception, même pour un fix d'une ligne.
 
 - Branches : `feat/`, `fix/`, `chore/` + nom en kebab-case.
 - Commits : Conventional Commits, scope facultatif, message en français (`feat(prix): afficher la médiane par marché`).
+
+## Agent skills
+
+### Issue tracker
+
+Les tickets vivent dans les GitHub Issues de `AmielDylan/nimbiwe` (CLI `gh`). Voir `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context : un `CONTEXT.md` et `docs/adr/` à la racine. Voir `docs/agents/domain.md`.
