@@ -251,17 +251,31 @@ otp_expiry = 3600
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
 template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
-max_frequency = "5s"
+# 1 s en local pour que les tests d'API rejouent une connexion ; à régler à
+# 60 s sur le projet distant (tableau de bord) avant le pilote.
+max_frequency = "1s"
 
-# Use pre-defined map of phone number to OTP for testing.
-# [auth.sms.test_otp]
-# 4152127777 = "123456"
+# Numéros de test à code fixe : aucun SMS réel n'est envoyé. Base locale
+# uniquement, à ne jamais recopier sur le projet distant.
+[auth.sms.test_otp]
+22900000101 = "123456"
+22900000102 = "123456"
+22900000103 = "123456"
+22900000104 = "123456"
+22900000105 = "123456"
+22900000106 = "123456"
+22900000107 = "123456"
+22900000108 = "123456"
+22900000109 = "123456"
+22900000110 = "123456"
+22900000111 = "123456"
+22900000112 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
@@ -282,9 +296,13 @@ max_frequency = "5s"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
+# Fournisseur factice en local : il faut un fournisseur activé pour demander un
+# code, mais les numéros de test ([auth.sms.test_otp]) n'envoient aucun SMS. Le
+# vrai fournisseur se configure sur le projet distant (pilote : Twilio ; ouverture
+# publique : BulkGate). Jeton fictif dans supabase/.env (voir supabase/.env.example).
+enabled = true
+account_sid = "AC00000000000000000000000000000000"
+message_service_sid = "MG00000000000000000000000000000000"
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 

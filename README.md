@@ -22,6 +22,12 @@ Renseigner ensuite `EXPO_PUBLIC_SUPABASE_ANON_KEY` dans `.env` avec la clé « P
 
 Les tests d'API préparent leurs données avec la clé « Secret » de la base **locale**, à mettre dans `SUPABASE_SECRET_KEY` (sans préfixe `EXPO_PUBLIC_`, donc jamais embarquée). Ne jamais y mettre une clé de production.
 
+## Connexion par SMS en développement
+
+La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000112` (à saisir sans le « + », par exemple `01 97 00 00 00` ne correspond à aucun d'eux : utiliser `22900000101`) répondent tous avec le code fixe **123456**. Ils sont déclarés dans `supabase/config.toml` (`[auth.sms.test_otp]`) et ne doivent jamais être recopiés sur le projet distant.
+
+Le fournisseur SMS est factice en local : copier `supabase/.env.example` vers `supabase/.env` avant `npm run db:start`. Le fournisseur réel se configure sur le projet distant (pilote : Twilio, ouverture publique : BulkGate), ainsi que le délai minimal entre deux codes (`max_frequency`, 1 s en local pour les tests, à mettre à 60 s).
+
 ## Base de données locale
 
 ```bash
@@ -58,6 +64,6 @@ Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectP
 
 - `src/app/` : routes uniquement, sans logique métier
 - `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/` : accès aux données, logique et composants ensemble)
-- `src/lib/` : client Supabase
+- `src/lib/` : client Supabase (session conservée dans AsyncStorage)
 - `src/components/` : composants réutilisables
 - `supabase/` : configuration, migrations et données de départ
