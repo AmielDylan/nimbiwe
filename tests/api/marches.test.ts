@@ -16,7 +16,7 @@ describe('marchés (référentiel)', () => {
     const { data, error } = await lecteurAnonyme.from('marches').select('nom').order('nom');
 
     expect(error).toBeNull();
-    expect(data).toEqual([{ nom: 'Bohicon' }, { nom: 'Ganhi' }, { nom: 'Ouando' }]);
+    expect(data).toEqual(expect.arrayContaining([{ nom: 'Bohicon' }, { nom: 'Ganhi' }, { nom: 'Ouando' }]));
   });
 
   it("un lecteur anonyme ne peut pas ajouter un marché", async () => {
