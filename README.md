@@ -18,7 +18,9 @@ npm install
 cp .env.example .env
 ```
 
-Renseigner ensuite `EXPO_PUBLIC_SUPABASE_ANON_KEY` dans `.env` avec la clé « Publishable » affichée par `npm run db:start`. Le fichier `.env` n'est jamais versionné, et aucune clé secrète (`service_role`, « Secret ») ne doit y figurer : ces variables sont embarquées dans l'app.
+Renseigner ensuite `EXPO_PUBLIC_SUPABASE_ANON_KEY` dans `.env` avec la clé « Publishable » affichée par `npm run db:start`. Le fichier `.env` n'est jamais versionné. Les variables `EXPO_PUBLIC_*` sont embarquées dans l'app : aucune clé secrète ne doit y figurer.
+
+Les tests d'API préparent leurs données avec la clé « Secret » de la base **locale**, à mettre dans `SUPABASE_SECRET_KEY` (sans préfixe `EXPO_PUBLIC_`, donc jamais embarquée). Ne jamais y mettre une clé de production.
 
 ## Base de données locale
 
@@ -28,7 +30,7 @@ npm run db:reset   # recrée la base : migrations puis données de départ
 npm run db:stop    # arrête la base
 ```
 
-Les migrations sont dans `supabase/migrations/` et les données de départ dans `supabase/seed.sql`.
+Les migrations sont dans `supabase/migrations/` : elles portent le référentiel réel (marchés, produits, unités) et les règles du serveur, dont le calcul du prix courant (vue `prix_courants`). Le fichier `supabase/seed.sql` charge des signalements d'exemple **factices** (comptes « Exemple »), uniquement en local : il ne s'applique jamais en production. Les dates d'exemple sont relatives au moment du reset : relancer `npm run db:reset` pour rafraîchir des prix qui ont plus de 7 jours.
 
 ## Lancer l'app
 
@@ -55,6 +57,7 @@ Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectP
 ## Structure
 
 - `src/app/` : routes uniquement, sans logique métier
-- `src/screens/` : corps des écrans
+- `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/` : accès aux données, logique et composants ensemble)
+- `src/lib/` : client Supabase
 - `src/components/` : composants réutilisables
 - `supabase/` : configuration, migrations et données de départ
