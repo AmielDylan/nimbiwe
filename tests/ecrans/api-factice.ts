@@ -55,6 +55,8 @@ type OptionsConnexion = {
   horsBornes?: 'haut' | 'bas';
   /** L'envoi des collectes échoue à cause du réseau ou du serveur. */
   collecteEnPanne?: boolean;
+  /** La lecture de la liste de mes collectes échoue. */
+  mesCollectesEnPanne?: boolean;
 };
 
 export type LigneCollecte = {
@@ -180,6 +182,7 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
         });
         return new Response(null, { status: 201 });
       }
+      if (options.mesCollectesEnPanne) return json({ message: 'Erreur interne' }, 500);
       return json(mesCollectes);
     }
 

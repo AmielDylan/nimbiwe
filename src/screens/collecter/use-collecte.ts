@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { formaterMontant, formaterQuantite } from '@/lib/formats';
 import { supabase } from '@/lib/supabase';
@@ -13,8 +13,15 @@ const DATE_INVALIDE = 'NB004';
 
 type Message = { texte: string; erreur: boolean };
 
-function nombre(saisie: string): number {
-  return Number(saisie.trim().replace(/\s/g, '').replace(',', '.'));
+// Mêmes plafonds que les contraintes de la table `collectes`.
+const PRIX_MAX = 99_999_999;
+const QUANTITE_MAX = 99_999;
+
+/** Un nombre écrit en chiffres, avec ou sans décimales ; NaN sinon (« 0x10 » et « 1e3 » sont refusés). */
+function nombre(saisie: string, decimales: boolean): number {
+  const propre = saisie.trim().replace(/\s/g, '');
+  const forme = decimales ? /^\d+([.,]\d+)?$/ : /^\d+$/;
+  return forme.test(propre) ? Number(propre.replace(',', '.')) : Number.NaN;
 }
 
 /** Le formulaire de collecte : saisie, garde-fous du serveur et envoi. */
@@ -28,20 +35,19 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
   // Sens de l'écart quand le serveur juge le prix hors bornes : la confirmation est attendue.
   const [horsBornes, setHorsBornes] = useState<'haut' | 'bas' | null>(null);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  // Le state ne suffit pas contre un double appui avant le prochain rendu.
+  const envoiVerrou = useRef(false);
 
   const produit = produits.find((p) => p.id === produitId) ?? null;
   const unitesValides = produit?.unites ?? [];
   const unite = unitesValides.find((u) => u.id === uniteId) ?? null;
-  const quantite = nombre(quantiteSaisie);
-  const prix = nombre(prixSaisi);
-  const saisieValide =
-    produit !== null &&
-    marcheId !== null &&
-    unite !== null &&
-    Number.isFinite(quantite) &&
-    quantite > 0 &&
-    Number.isInteger(prix) &&
-    prix > 0;
+  const quantite = nombre(quantiteSaisie, true);
+  const prix = nombre(prixSaisi, false);
+  const quantiteValide = quantite > 0 && quantite <= QUANTITE_MAX;
+  const prixValide = prix > 0 && prix <= PRIX_MAX;
+  const saisieValide = produit !== null && marcheId !== null && unite !== null && quantiteValide && prixValide;
+  const erreurPrix =
+    prixSaisi.trim() !== '' && !prixValide ? 'Entrez un prix entier en FCFA, sans décimales.' : null;
 
   // Toute modification annule l'avertissement et le message : la confirmation
   // ne vaut que pour la saisie affichée quand elle a été demandée.
@@ -50,7 +56,13 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
     setMessage(null);
   }
 
+  // La saisie est figée pendant l'envoi : le résultat se rapporte à ce qui a été envoyé.
+  function modifiable(): boolean {
+    return !envoiVerrou.current;
+  }
+
   function choisirProduit(id: number | null) {
+    if (!modifiable()) return;
     const choisi = produits.find((p) => p.id === id);
     setProduitId(id);
     // Une seule unité valide : elle est choisie d'office ; sinon le contributeur choisit.
@@ -59,27 +71,32 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
   }
 
   function choisirMarche(id: number | null) {
+    if (!modifiable()) return;
     setMarcheId(id);
     apresModification();
   }
 
   function choisirUnite(id: number | null) {
+    if (!modifiable()) return;
     setUniteId(id);
     apresModification();
   }
 
   function saisirQuantite(saisie: string) {
+    if (!modifiable()) return;
     setQuantiteSaisie(saisie);
     apresModification();
   }
 
   function saisirPrix(saisie: string) {
+    if (!modifiable()) return;
     setPrixSaisi(saisie);
     apresModification();
   }
 
   async function envoyer(confirme = false) {
-    if (!saisieValide || envoiEnCours) return;
+    if (!saisieValide || envoiVerrou.current) return;
+    envoiVerrou.current = true;
     setEnvoiEnCours(true);
     setMessage(null);
     // Le client n'envoie que les champs autorisés ; le reste est décidé par le serveur.
@@ -91,6 +108,7 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
       prix_total: prix,
       ...(confirme ? { hors_bornes_confirme: true } : {}),
     });
+    envoiVerrou.current = false;
     setEnvoiEnCours(false);
 
     if (!error) {
@@ -130,7 +148,9 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
     saisirQuantite,
     saisirPrix,
     envoyer: () => envoyer(false),
-    confirmer: () => envoyer(true),
+    // La confirmation n'a de sens que face à l'avertissement affiché.
+    confirmer: () => horsBornes !== null && envoyer(true),
+    erreurPrix,
     corriger: () => setHorsBornes(null),
   };
 }

@@ -8,6 +8,7 @@ const DATE_INVALIDE = 'NB004';
 const REFUSE_PAR_LA_SECURITE = '42501';
 const CLE_ETRANGERE = '23503';
 const COLONNE_CALCULEE = '428C9'; // insertion dans une colonne générée
+const CONTRAINTE_VIOLEE = '23514'; // check_violation
 
 type Scenario = Awaited<ReturnType<typeof creerScenario>>;
 type Contributeur = Awaited<ReturnType<typeof contributeurConnecte>>;
@@ -28,6 +29,11 @@ async function contributeur() {
   const compte = await contributeurConnecte();
   comptes.push(compte);
   return compte;
+}
+
+async function lireSeuil(): Promise<number> {
+  const { data } = await admin.from('parametres').select('valeur').eq('cle', 'collectes_max_par_jour').single();
+  return data!.valeur as number;
 }
 
 /** Une collecte comme l'app l'envoie : seulement les champs autorisés. */
@@ -100,7 +106,7 @@ describe("le client n'écrit que les champs autorisés", () => {
     expect(data).toEqual([]);
   });
 
-  it('refuse de collecter au nom d’un autre contributeur', async () => {
+  it('ne permet pas de désigner un autre auteur pour la collecte', async () => {
     const auteur = await contributeur();
     const autre = await contributeur();
 
@@ -123,7 +129,63 @@ describe("le client n'écrit que les champs autorisés", () => {
   });
 });
 
+describe('valeurs aberrantes', () => {
+  it.each([
+    ['un prix NaN', { prix_total: 'NaN' }],
+    ['un prix infini', { prix_total: 'Infinity' }],
+    ['un prix démesuré', { prix_total: 1e9 }],
+    ['une quantité nulle', { quantite: 0 }],
+    ['une quantité NaN', { quantite: 'NaN' }],
+    ['une quantité démesurée', { quantite: 1e6 }],
+    ['un prix négatif', { prix_total: -5 }],
+  ])('refuse %s, même confirmé', async (_nom, champs) => {
+    const auteur = await contributeur();
+
+    const { error } = await auteur.client
+      .from('collectes')
+      .insert(await collecte('maïs', 'kg', { ...champs, hors_bornes_confirme: true }));
+
+    expect(error?.code).toBe(CONTRAINTE_VIOLEE);
+    const { data } = await admin.from('collectes').select('id').eq('marche_id', scenario.marcheId);
+    expect(data).toEqual([]);
+  });
+
+  it('une confirmation nulle envoyée explicitement ne contourne rien', async () => {
+    const auteur = await contributeur();
+
+    const { error } = await auteur.client
+      .from('collectes')
+      .insert(await collecte('maïs', 'kg', { prix_total: 5000, hors_bornes_confirme: null }));
+
+    expect(error?.code).toBe(HORS_BORNES);
+  });
+});
+
 describe('bornes plausibles', () => {
+  it("un produit sans bornes connues n'est jamais hors bornes", async () => {
+    const auteur = await contributeur();
+    const { data: produit } = await admin.from('produits').insert({ nom: `produit-test-${crypto.randomUUID()}` }).select('id').single();
+    const { data: unite } = await admin.from('unites').select('id').eq('symbole', 'kg').single();
+    await admin.from('produits_unites').insert({ produit_id: produit!.id, unite_id: unite!.id });
+    try {
+      const { error } = await auteur.client.from('collectes').insert({
+        produit_id: produit!.id,
+        unite_id: unite!.id,
+        marche_id: scenario.marcheId,
+        quantite: 1,
+        prix_total: 9_000_000,
+      });
+
+      expect(error).toBeNull();
+      const { data } = await auteur.client.from('collectes').select('hors_bornes').eq('produit_id', produit!.id).single();
+      expect(data?.hors_bornes).toBe(false);
+    } finally {
+      await admin.from('collectes').delete().eq('produit_id', produit!.id);
+      await admin.from('produits_unites').delete().eq('produit_id', produit!.id);
+      await admin.from('produits').delete().eq('id', produit!.id);
+    }
+  });
+
   it("un prix hors bornes est refusé tant que le contributeur ne le confirme pas, dans le sens indiqué", async () => {
     const auteur = await contributeur();
 
@@ -181,9 +243,22 @@ describe('limite de fréquence', () => {
     expect(sixieme.error?.code).toBe(LIMITE_QUOTIDIENNE);
   });
 
+  it('tient la limite même quand les envois arrivent en même temps', async () => {
+    const auteur = await contributeur();
+    const ligne = await collecte('gari', 'kg');
+
+    const reponses = await Promise.all(
+      Array.from({ length: 10 }, () => auteur.client.from('collectes').insert(ligne)),
+    );
+
+    expect(reponses.filter((r) => r.error === null)).toHaveLength(5);
+    expect(reponses.filter((r) => r.error?.code === LIMITE_QUOTIDIENNE)).toHaveLength(5);
+  });
+
   it("ne limite ni un autre produit, ni un autre contributeur", async () => {
     const auteur = await contributeur();
     const autre = await contributeur();
+    const seuilInitial = await lireSeuil();
     await admin.from('parametres').update({ valeur: 1 }).eq('cle', 'collectes_max_par_jour');
     try {
       await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
@@ -194,12 +269,13 @@ describe('limite de fréquence', () => {
       expect(autreProduit.error).toBeNull();
       expect(autreContributeur.error).toBeNull();
     } finally {
-      await admin.from('parametres').update({ valeur: 5 }).eq('cle', 'collectes_max_par_jour');
+      await admin.from('parametres').update({ valeur: seuilInitial }).eq('cle', 'collectes_max_par_jour');
     }
   });
 
   it('le seuil est paramétrable', async () => {
     const auteur = await contributeur();
+    const seuilInitial = await lireSeuil();
     await admin.from('parametres').update({ valeur: 2 }).eq('cle', 'collectes_max_par_jour');
     try {
       await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
@@ -209,7 +285,7 @@ describe('limite de fréquence', () => {
 
       expect(troisieme.error?.code).toBe(LIMITE_QUOTIDIENNE);
     } finally {
-      await admin.from('parametres').update({ valeur: 5 }).eq('cle', 'collectes_max_par_jour');
+      await admin.from('parametres').update({ valeur: seuilInitial }).eq('cle', 'collectes_max_par_jour');
     }
   });
 

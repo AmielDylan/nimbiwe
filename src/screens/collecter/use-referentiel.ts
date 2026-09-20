@@ -6,10 +6,9 @@ export type Unite = { id: number; symbole: string };
 export type Produit = { id: number; nom: string; unites: Unite[] };
 export type Marche = { id: number; nom: string };
 
-type Etat =
-  | { statut: 'chargement' }
-  | { statut: 'erreur' }
-  | { statut: 'pret'; produits: Produit[]; marches: Marche[] };
+export type ReferentielPret = { statut: 'pret'; produits: Produit[]; marches: Marche[] };
+
+type Etat = { statut: 'chargement' } | { statut: 'erreur' } | ReferentielPret;
 
 /** Produits (avec leurs unités valides) et marchés proposés par le formulaire. */
 export function useReferentiel() {

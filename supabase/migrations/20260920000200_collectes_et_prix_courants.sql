@@ -23,10 +23,12 @@ create table public.collectes (
   unite_id bigint not null,
   marche_id bigint not null references public.marches (id),
   contributeur_id uuid not null references public.profils (id),
-  quantite numeric not null default 1 check (quantite > 0),
-  prix_total numeric not null check (prix_total > 0),
+  -- Bornée : en Postgres, NaN et l'infini sont « plus grands » que tout nombre et
+  -- passent un simple `> 0` ; le plafond les refuse.
+  quantite numeric not null default 1 check (quantite > 0 and quantite < 100000),
+  prix_total numeric not null check (prix_total > 0 and prix_total < 100000000),
   -- Calculé par le serveur : le client ne peut pas le forger.
-  prix_unitaire numeric generated always as (prix_total / quantite) stored,
+  prix_unitaire numeric generated always as (prix_total / nullif(quantite, 0)) stored,
   observe_le timestamptz not null default now(),
   cree_le timestamptz not null default now(),
   -- L'unité doit être valide pour le produit.

@@ -74,7 +74,7 @@ Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectP
 ## Structure
 
 - `src/app/` : routes uniquement, sans logique métier
-- `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/` : accès aux données, logique et composants ensemble)
-- `src/lib/` : client Supabase (session conservée dans AsyncStorage)
-- `src/components/` : composants réutilisables
+- `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/`, `collecter/`, `profil/` : accès aux données, logique et composants ensemble)
+- `src/components/` : composants partagés (boutons, champs, puces)
+- `src/lib/` : client Supabase (session conservée dans AsyncStorage), formats français, hook de session
 - `supabase/` : configuration, migrations et données de départ

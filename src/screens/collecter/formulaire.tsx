@@ -9,7 +9,7 @@ import { useTheme } from '@/theme';
 import { MesCollectes } from './mes-collectes';
 import { useCollecte } from './use-collecte';
 import { useMesCollectes } from './use-mes-collectes';
-import { useReferentiel } from './use-referentiel';
+import { type ReferentielPret, useReferentiel } from './use-referentiel';
 
 export function Formulaire() {
   const theme = useTheme();
@@ -41,7 +41,7 @@ function Saisie({
   etat,
   mesCollectes,
 }: {
-  etat: Extract<ReturnType<typeof useReferentiel>['etat'], { statut: 'pret' }>;
+  etat: ReferentielPret;
   mesCollectes: ReturnType<typeof useMesCollectes>;
 }) {
   const theme = useTheme();
@@ -92,7 +92,9 @@ function Saisie({
         value={collecte.prixSaisi}
         onChangeText={collecte.saisirPrix}
       />
-      <Text style={[styles.texte, { color: theme.texteSecondaire }]}>{collecte.libellePrix}</Text>
+      <Text style={[styles.texte, { color: collecte.erreurPrix ? theme.erreur : theme.texteSecondaire }]}>
+        {collecte.erreurPrix ?? collecte.libellePrix}
+      </Text>
 
       {collecte.avertissement ? (
         <View style={[styles.avertissement, { backgroundColor: theme.carte, borderColor: theme.erreur }]}>
@@ -114,7 +116,7 @@ function Saisie({
         </Text>
       )}
 
-      <MesCollectes collectes={mesCollectes.collectes} />
+      <MesCollectes collectes={mesCollectes.collectes} erreur={mesCollectes.erreur} />
     </ScrollView>
   );
 }

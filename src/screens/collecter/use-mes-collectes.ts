@@ -15,13 +15,15 @@ export type MaCollecte = {
 /** Les dernières collectes du contributeur connecté (la base ne lui montre que les siennes). */
 export function useMesCollectes() {
   const [collectes, setCollectes] = useState<MaCollecte[] | null>(null); // null : pas encore chargées
+  const [erreur, setErreur] = useState(false);
 
   const recharger = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('collectes')
       .select('id, prix_total, quantite, observe_le, produits(nom), unites(symbole), marches(nom)')
       .order('cree_le', { ascending: false })
       .limit(10);
+    setErreur(Boolean(error));
     if (data) setCollectes(data as unknown as MaCollecte[]);
   }, []);
 
@@ -29,5 +31,5 @@ export function useMesCollectes() {
     recharger();
   }, [recharger]);
 
-  return { collectes, recharger };
+  return { collectes, erreur, recharger };
 }

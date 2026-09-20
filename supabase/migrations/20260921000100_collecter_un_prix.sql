@@ -79,23 +79,28 @@ set search_path = ''
 as $$
 declare
   appelant text := auth.jwt() ->> 'role';
-  unitaire numeric := new.prix_total / new.quantite;
+  unitaire numeric;
   bornes record;
   maximum_par_jour numeric;
   anciennete_maximale numeric;
   deja_collectees integer;
 begin
+  -- `nullif` : une quantité nulle n'est pas une division par zéro ici, mais un
+  -- refus ordinaire de la contrainte de la table.
+  unitaire := new.prix_total / nullif(new.quantite, 0);
+
   select prix_unitaire_min, prix_unitaire_max into bornes
   from public.bornes_plausibles
   where produit_id = new.produit_id and unite_id = new.unite_id;
 
   -- Sans bornes connues pour ce produit et cette unité, rien n'est hors bornes.
   new.hors_bornes := coalesce(unitaire < bornes.prix_unitaire_min or unitaire > bornes.prix_unitaire_max, false);
-  new.hors_bornes_confirme := new.hors_bornes and new.hors_bornes_confirme;
+  new.hors_bornes_confirme := new.hors_bornes and coalesce(new.hors_bornes_confirme, false);
 
-  -- Les garde-fous s'appliquent aux contributeurs connectés, pas au tableau de
-  -- bord, aux imports ni aux tests (rôles postgres et service_role).
-  if appelant is distinct from 'authenticated' then
+  -- Les garde-fous s'appliquent à tout appel de l'API, sauf le tableau de bord, les
+  -- imports et les tests (service_role, ou connexion directe en postgres). Liste
+  -- blanche : sans rôle reconnu, les garde-fous s'appliquent.
+  if appelant = 'service_role' or session_user in ('postgres', 'supabase_admin') then
     return new;
   end if;
 
@@ -108,6 +113,11 @@ begin
      or new.observe_le < now() - make_interval(days => coalesce(anciennete_maximale, 7)::integer) then
     raise exception 'La date d''observation est invalide' using errcode = 'NB004';
   end if;
+
+  -- Deux envois simultanés du même contributeur pour le même produit et marché
+  -- passent l'un après l'autre : sans ce verrou, ils compteraient tous deux le même total.
+  perform pg_advisory_xact_lock(
+    hashtextextended(new.contributeur_id::text || ':' || new.produit_id || ':' || new.marche_id, 0));
 
   select valeur into maximum_par_jour from public.parametres where cle = 'collectes_max_par_jour';
   select count(*) into deja_collectees
@@ -130,6 +140,9 @@ end;
 $$;
 
 revoke execute on function public.verifier_collecte() from public, anon, authenticated;
+
+create index collectes_limite_quotidienne_idx
+  on public.collectes (contributeur_id, produit_id, marche_id, cree_le);
 
 create trigger verifier_collecte_avant_insertion
   before insert on public.collectes

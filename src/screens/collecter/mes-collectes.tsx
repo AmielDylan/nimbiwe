@@ -5,12 +5,17 @@ import { useTheme } from '@/theme';
 
 import type { MaCollecte } from './use-mes-collectes';
 
-export function MesCollectes({ collectes }: { collectes: MaCollecte[] | null }) {
+export function MesCollectes({ collectes, erreur }: { collectes: MaCollecte[] | null; erreur: boolean }) {
   const theme = useTheme();
 
   return (
     <View style={styles.conteneur}>
       <Text style={[styles.titre, { color: theme.texte }]}>Mes dernières collectes</Text>
+      {erreur && (
+        <Text style={[styles.detail, { color: theme.erreur }]}>
+          Impossible de charger vos collectes. Vérifiez votre connexion.
+        </Text>
+      )}
       {collectes?.length === 0 && (
         <Text style={[styles.detail, { color: theme.texteSecondaire }]}>Vous n'avez pas encore collecté de prix.</Text>
       )}

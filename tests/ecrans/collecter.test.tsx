@@ -126,6 +126,32 @@ describe('collecter, connecté', () => {
     expect(api.collectes[0]).toMatchObject({ quantite: 2.5, prix_total: 1000 });
   });
 
+  it("explique qu'un prix décimal n'est pas accepté", async () => {
+    simulerApi(donnees);
+    await ouvrirLaCollecteConnecte();
+    await screen.findByRole('button', { name: 'Maïs' });
+    choisir('Maïs');
+    choisir('Ganhi');
+
+    saisirLePrix('4,5');
+
+    expect(screen.getByText('Entrez un prix entier en FCFA, sans décimales.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Envoyer la collecte' })).toBeDisabled();
+  });
+
+  it("refuse les écritures scientifiques ou hexadécimales, qu'un simple Number() accepterait", async () => {
+    simulerApi(donnees);
+    await ouvrirLaCollecteConnecte();
+    await screen.findByRole('button', { name: 'Maïs' });
+    choisir('Maïs');
+    choisir('Ganhi');
+
+    for (const prix of ['1e3', '0x10', '450 FCFA']) {
+      saisirLePrix(prix);
+      expect(screen.getByRole('button', { name: 'Envoyer la collecte' })).toBeDisabled();
+    }
+  });
+
   it('refuse un prix nul ou une quantité nulle', async () => {
     simulerApi(donnees);
     await ouvrirLaCollecteConnecte();
@@ -226,6 +252,22 @@ describe('refus et pannes', () => {
     ).toBeOnTheScreen();
   });
 
+  it("n'envoie qu'une fois quand on appuie deux fois de suite sur le bouton", async () => {
+    const api = simulerApi(donnees);
+    await ouvrirLaCollecteConnecte();
+    await screen.findByRole('button', { name: 'Maïs' });
+    choisir('Maïs');
+    choisir('Ganhi');
+    saisirLePrix('450');
+
+    const envoyer = screen.getByRole('button', { name: 'Envoyer la collecte' });
+    fireEvent.press(envoyer);
+    fireEvent.press(envoyer);
+
+    await screen.findByText('Merci ! Votre collecte est enregistrée.');
+    expect(api.envoisDeCollecte).toBe(1);
+  });
+
   it("garde la saisie et propose de réessayer quand l'envoi échoue", async () => {
     const api = simulerApi(donnees, { collecteEnPanne: true });
     await ouvrirLaCollecteConnecte();
@@ -268,6 +310,13 @@ describe('mes collectes', () => {
     expect(await screen.findByText('450 FCFA pour 1 kg')).toBeOnTheScreen();
     expect(screen.getByText('Maïs · Ganhi')).toBeOnTheScreen();
     expect(screen.getByText('il y a 5 min')).toBeOnTheScreen();
+  });
+
+  it('dit quand la liste des collectes ne se charge pas', async () => {
+    simulerApi(donnees, { mesCollectesEnPanne: true });
+    await ouvrirLaCollecteConnecte();
+
+    expect(await screen.findByText('Impossible de charger vos collectes. Vérifiez votre connexion.')).toBeOnTheScreen();
   });
 
   it("dit qu'il n'y a encore aucune collecte", async () => {
