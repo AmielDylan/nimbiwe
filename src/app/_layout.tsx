@@ -1,5 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import AddCircle from 'reicon-react-native/icons/AddCircle';
+import Tag from 'reicon-react-native/icons/Tag';
+import User from 'reicon-react-native/icons/User';
 
 import { useTheme } from '@/theme';
 
@@ -21,7 +23,9 @@ export default function Layout() {
         options={{
           title: 'Prix',
           tabBarAccessibilityLabel: 'Prix, onglet 1 sur 3',
-          tabBarIcon: ({ color, size }) => <Ionicons name="pricetag-outline" color={color} size={size} />,
+          tabBarIcon: ({ size, focused }) => (
+            <Tag color={focused ? theme.accent : theme.texteSecondaire} size={size} weight={focused ? 'Filled' : 'Outline'} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -29,7 +33,9 @@ export default function Layout() {
         options={{
           title: 'Collecter',
           tabBarAccessibilityLabel: 'Collecter, onglet 2 sur 3',
-          tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" color={color} size={size} />,
+          tabBarIcon: ({ size, focused }) => (
+            <AddCircle color={focused ? theme.accent : theme.texteSecondaire} size={size} weight={focused ? 'Filled' : 'Outline'} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -37,7 +43,9 @@ export default function Layout() {
         options={{
           title: 'Profil',
           tabBarAccessibilityLabel: 'Profil, onglet 3 sur 3',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" color={color} size={size} />,
+          tabBarIcon: ({ size, focused }) => (
+            <User color={focused ? theme.accent : theme.texteSecondaire} size={size} weight={focused ? 'Filled' : 'Outline'} />
+          ),
         }}
       />
     </Tabs>

@@ -1,3 +1,9 @@
+// reicon-react-native est publié en modules ES : Jest doit le transformer,
+// comme les paquets React Native que jest-expo transforme déjà.
+const transformIgnorePatterns = require('jest-expo/jest-preset').transformIgnorePatterns.map((motif) =>
+  motif.replace('/node_modules/(?!(', '/node_modules/(?!(reicon-react-native|'),
+);
+
 /** @type {import('jest').Config} */
 module.exports = {
   projects: [
@@ -22,6 +28,11 @@ module.exports = {
     {
       displayName: 'ecrans',
       preset: 'jest-expo',
+      transformIgnorePatterns,
+      // Le paquet n'expose que la condition « import » : on le résout à la main.
+      moduleNameMapper: {
+        '^reicon-react-native/icons/(.*)$': '<rootDir>/node_modules/reicon-react-native/icons/$1.js',
+      },
       setupFiles: ['<rootDir>/tests/preparer-ecrans.js'],
       testMatch: ['<rootDir>/tests/ecrans/**/*.test.tsx'],
     },
