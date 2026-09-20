@@ -49,9 +49,11 @@ export async function creerScenario() {
       phone_confirm: true,
     });
     if (erreurUtilisateur) throw erreurUtilisateur;
+    // Le profil est créé par la base à la création du compte.
     const { error: erreurProfil } = await admin
       .from('profils')
-      .insert({ id: data.user.id, nom_affiche: 'Test', est_relais: options.relais ?? false });
+      .update({ nom_affiche: 'Test', est_relais: options.relais ?? false })
+      .eq('id', data.user.id);
     if (erreurProfil) throw erreurProfil;
     contributeurs.push(data.user.id);
     return data.user.id;
@@ -88,4 +90,32 @@ export async function creerScenario() {
   }
 
   return { marcheId: marche.id as number, contributeur, collecter, nettoyer };
+}
+
+/** Numéros de test de la base locale (supabase/config.toml, [auth.sms.test_otp]) : aucun SMS réel. */
+export const CODE_DE_TEST = '123456';
+const NUMEROS_DE_TEST = Array.from({ length: 12 }, (_, i) => `229000001${String(i + 1).padStart(2, '0')}`);
+let prochainNumero = Math.floor(Math.random() * NUMEROS_DE_TEST.length);
+
+/**
+ * Un numéro de test que personne n'a encore utilisé : le compte éventuellement
+ * créé par un test précédent est supprimé, pour rejouer une « première connexion ».
+ */
+export async function numeroDeTestNeuf(): Promise<string> {
+  const telephone = NUMEROS_DE_TEST[prochainNumero++ % NUMEROS_DE_TEST.length];
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  if (error) throw error;
+  const existant = data.users.find((utilisateur) => utilisateur.phone === telephone);
+  if (existant) await admin.auth.admin.deleteUser(existant.id);
+  return telephone;
+}
+
+/** Un client connecté avec un numéro de test, comme le ferait l'app. */
+export async function seConnecter(telephone: string) {
+  const client = createClient(url!, cleAnonyme!, sansSession);
+  const envoi = await client.auth.signInWithOtp({ phone: telephone });
+  if (envoi.error) throw envoi.error;
+  const { data, error } = await client.auth.verifyOtp({ phone: telephone, token: CODE_DE_TEST, type: 'sms' });
+  if (error || !data.user) throw error ?? new Error('Connexion impossible');
+  return { client, utilisateurId: data.user.id };
 }

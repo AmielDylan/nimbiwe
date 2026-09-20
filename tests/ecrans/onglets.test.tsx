@@ -16,7 +16,7 @@ describe('onglets', () => {
     expect(await screen.findByText('425 FCFA / kg')).toBeOnTheScreen();
   });
 
-  it('affiche un écran d’attente pour chaque onglet', async () => {
+  it('affiche l’écran de chaque onglet', async () => {
     renderRouter('./src/app');
     await screen.findByText('425 FCFA / kg');
 
@@ -24,6 +24,6 @@ describe('onglets', () => {
     expect(screen.getByText('La collecte de prix arrive bientôt.')).toBeOnTheScreen();
 
     fireEvent.press(screen.getByRole('button', { name: 'Profil, onglet 3 sur 3' }));
-    expect(screen.getByText('Votre profil arrive bientôt.')).toBeOnTheScreen();
+    expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
   });
 });

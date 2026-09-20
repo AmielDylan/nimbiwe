@@ -33,12 +33,103 @@ function table(requete: RequestInfo | URL): keyof Donnees {
 
 const fetchFactice = () => globalThis.fetch as jest.Mock;
 
-/** L'API répond avec ces données (fonction : relue à chaque requête, pour simuler un changement). */
-export function simulerApi(donnees: Donnees | (() => Donnees)) {
-  fetchFactice().mockImplementation(async (requete: RequestInfo | URL) => {
+export const CODE_VALIDE = '123456';
+export const UTILISATEUR_ID = 'a1b2c3d4-0000-4000-8000-000000000001';
+// Clé de stockage de la session : sb-<premier label de l'hôte>-auth-token.
+export const CLE_DE_SESSION = `sb-${new URL(process.env.EXPO_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token`;
+
+type OptionsConnexion = {
+  /** Nom affiché déjà enregistré pour le compte de test. */
+  nomAffiche?: string | null;
+  /** L'envoi du code échoue (réseau, limite de fréquence…). */
+  envoiEnPanne?: boolean;
+  /** La vérification du code échoue à cause du serveur (et non d'un mauvais code). */
+  verificationEnPanne?: boolean;
+  /** Aucun profil n'existe pour ce compte : la modification ne touche aucune ligne. */
+  profilIntrouvable?: boolean;
+};
+
+/** Ce que l'API simulée a reçu et retient : les tests le lisent pour vérifier les effets. */
+export type Simulation = {
+  demandesDeCode: string[];
+  nomAffiche: string | null;
+  deconnexions: number;
+};
+
+function jwt(charge: object): string {
+  const encoder = (objet: object) =>
+    btoa(JSON.stringify(objet)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return `${encoder({ alg: 'HS256', typ: 'JWT' })}.${encoder(charge)}.signature`;
+}
+
+/** Une session telle que la renvoie l'API d'authentification. */
+export function sessionDeTest(telephone = '22997000000') {
+  const expiration = Math.floor(Date.now() / 1000) + 3600;
+  return {
+    access_token: jwt({ sub: UTILISATEUR_ID, role: 'authenticated', exp: expiration }),
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: expiration,
+    refresh_token: 'jeton-de-rafraichissement',
+    user: {
+      id: UTILISATEUR_ID,
+      aud: 'authenticated',
+      role: 'authenticated',
+      phone: telephone,
+      app_metadata: {},
+      user_metadata: {},
+      created_at: new Date().toISOString(),
+    },
+  };
+}
+
+function chemin(requete: RequestInfo | URL): string {
+  const adresse = typeof requete === 'string' ? requete : requete instanceof URL ? requete.href : requete.url;
+  return new URL(adresse).pathname;
+}
+
+/**
+ * L'API répond avec ces données (fonction : relue à chaque requête, pour simuler
+ * un changement). Elle simule aussi la connexion par code et le profil : le code
+ * valide est CODE_VALIDE.
+ */
+export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsConnexion = {}): Simulation {
+  const simulation: Simulation = { demandesDeCode: [], nomAffiche: options.nomAffiche ?? null, deconnexions: 0 };
+
+  fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
+    const adresse = chemin(requete);
+    const corps = init?.body ? JSON.parse(String(init.body)) : {};
+
+    if (adresse.endsWith('/auth/v1/otp')) {
+      if (options.envoiEnPanne) return json({ msg: 'Erreur interne' }, 500);
+      simulation.demandesDeCode.push(corps.phone);
+      return json({});
+    }
+    if (adresse.endsWith('/auth/v1/verify')) {
+      if (options.verificationEnPanne) return json({ msg: 'Erreur interne' }, 500);
+      if (corps.token !== CODE_VALIDE) {
+        return json({ code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }, 403);
+      }
+      return json(sessionDeTest(corps.phone));
+    }
+    if (adresse.endsWith('/auth/v1/logout')) {
+      simulation.deconnexions += 1;
+      return new Response(null, { status: 204 });
+    }
+    if (adresse.endsWith('/rest/v1/profils')) {
+      if (init?.method === 'PATCH') {
+        if (options.profilIntrouvable) return json([]);
+        simulation.nomAffiche = corps.nom_affiche;
+        return json([{ id: UTILISATEUR_ID }]); // lignes modifiées, comme le fait l'API avec `select`
+      }
+      return json([{ nom_affiche: simulation.nomAffiche }]);
+    }
+
     const courantes = typeof donnees === 'function' ? donnees() : donnees;
     return json(courantes[table(requete)]);
   });
+
+  return simulation;
 }
 
 /** L'API est en panne. */
