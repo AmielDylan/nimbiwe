@@ -5,7 +5,7 @@ import { useTheme } from '@/theme';
 import { capitaliser, formaterAnciennete, formaterMontant, formaterNombreDeCollectes } from './formats';
 import type { PrixCourant } from './use-prix';
 
-export function CartePrix({ prix, jours }: { prix: PrixCourant; jours: number }) {
+export function CartePrix({ prix }: { prix: PrixCourant }) {
   const theme = useTheme();
 
   return (
@@ -22,7 +22,7 @@ export function CartePrix({ prix, jours }: { prix: PrixCourant; jours: number })
         <Text style={[styles.pasAssez, { color: theme.texteSecondaire }]}>Pas assez de données</Text>
       )}
       <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
-        {formaterNombreDeCollectes(prix.nombre_collectes, jours)}
+        {formaterNombreDeCollectes(prix.nombre_collectes)}
       </Text>
       <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
         {`Dernière collecte : ${formaterAnciennete(prix.derniere_collecte_le)}`}

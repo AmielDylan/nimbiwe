@@ -20,19 +20,14 @@ export type Reference = { id: number; nom: string };
 
 type Donnees = { prix: PrixCourant[]; marches: Reference[]; produits: Reference[] };
 
-/** Périodes proposées pour le calcul du prix courant, en jours. */
-export const PERIODES = [1, 3, 7, 30];
-const PERIODE_PAR_DEFAUT = 7;
-
 type Etat =
   | { statut: 'chargement' }
   | { statut: 'erreur' }
-  // `jours` : période sur laquelle les prix affichés ont été calculés.
-  | ({ statut: 'pret'; actualisationEchouee: boolean; jours: number } & Donnees);
+  | ({ statut: 'pret'; actualisationEchouee: boolean } & Donnees);
 
-async function charger(jours: number): Promise<Donnees> {
+async function charger(): Promise<Donnees> {
   const [prix, marches, produits] = await Promise.all([
-    supabase.rpc('prix_courants', { jours }).order('marche').order('produit'),
+    supabase.from('prix_courants').select('*').order('marche').order('produit'),
     supabase.from('marches').select('id, nom').order('nom'),
     supabase.from('produits').select('id, nom').order('nom'),
   ]);
@@ -45,8 +40,8 @@ async function charger(jours: number): Promise<Donnees> {
   };
 }
 
-async function chargerEtat(jours: number): Promise<Etat> {
-  return { statut: 'pret', actualisationEchouee: false, jours, ...(await charger(jours)) };
+async function chargerEtat(): Promise<Etat> {
+  return { statut: 'pret', actualisationEchouee: false, ...(await charger()) };
 }
 
 function messageVide(marche: boolean, produit: boolean): string {
@@ -61,47 +56,33 @@ export function usePrix() {
   const [actualisation, setActualisation] = useState(false);
   const [marcheId, setMarcheId] = useState<number | null>(null);
   const [produitId, setProduitId] = useState<number | null>(null);
-  const [periode, setPeriode] = useState(PERIODE_PAR_DEFAUT);
 
   const chargerPremiereFois = useCallback(async () => {
     setEtat({ statut: 'chargement' });
     try {
-      setEtat(await chargerEtat(periode));
+      setEtat(await chargerEtat());
     } catch {
       setEtat({ statut: 'erreur' });
     }
-  }, [periode]);
+  }, []);
 
-  // Rafraîchir ou changer de période : on garde les prix déjà affichés si le
-  // réseau échoue. Renvoie faux en cas d'échec.
-  const actualiser = useCallback(async (jours: number): Promise<boolean> => {
+  // Tirer pour rafraîchir : on garde les prix déjà affichés si le réseau échoue.
+  const actualiser = useCallback(async () => {
     setActualisation(true);
     try {
-      setEtat(await chargerEtat(jours));
-      return true;
+      setEtat(await chargerEtat());
     } catch {
       setEtat((courant) =>
         courant.statut === 'pret' ? { ...courant, actualisationEchouee: true } : { statut: 'erreur' },
       );
-      return false;
     } finally {
       setActualisation(false);
     }
   }, []);
 
-  const choisirPeriode = useCallback(
-    async (jours: number) => {
-      const precedente = periode;
-      setPeriode(jours);
-      if (!(await actualiser(jours))) setPeriode(precedente);
-    },
-    [periode, actualiser],
-  );
-
   useEffect(() => {
     chargerPremiereFois();
-    // Chargement initial seulement : les changements de période passent par choisirPeriode.
-  }, []);
+  }, [chargerPremiereFois]);
 
   const prixAffiches = useMemo(
     () =>
@@ -116,10 +97,8 @@ export function usePrix() {
   return {
     etat,
     actualisation,
-    actualiser: () => actualiser(periode),
+    actualiser,
     reessayer: chargerPremiereFois,
-    periode,
-    choisirPeriode,
     marcheId,
     choisirMarche: setMarcheId,
     produitId,

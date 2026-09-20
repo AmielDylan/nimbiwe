@@ -2,17 +2,6 @@ import { admin, creerScenario, ilYaJours, lecteurAnonyme } from './aide';
 
 type Scenario = Awaited<ReturnType<typeof creerScenario>>;
 
-type LignePrix = {
-  produit_id: number;
-  unite_id: number;
-  produit: string;
-  unite: string;
-  statut: 'publie' | 'pas_assez_de_donnees';
-  prix: number | null;
-  nombre_collectes: number;
-  derniere_collecte_le: string;
-};
-
 let scenario: Scenario;
 
 beforeEach(async () => {
@@ -23,12 +12,13 @@ afterEach(async () => {
   await scenario.nettoyer();
 });
 
-async function lirePrix(jours?: number): Promise<LignePrix[]> {
+async function lirePrix() {
   const { data, error } = await lecteurAnonyme
-    .rpc('prix_courants', jours === undefined ? {} : { jours })
+    .from('prix_courants')
+    .select('*')
     .eq('marche_id', scenario.marcheId);
   expect(error).toBeNull();
-  return (data ?? []) as LignePrix[];
+  return data ?? [];
 }
 
 describe('prix courant', () => {
@@ -149,54 +139,6 @@ describe('publication', () => {
   });
 });
 
-describe('période', () => {
-  it('se resserre sur un jour : seules les dernières 24 heures comptent', async () => {
-    const relais = await scenario.contributeur({ relais: true });
-    await scenario.collecter(relais, 'sucre', 'kg', { prix: 400 });
-    await scenario.collecter(relais, 'sucre', 'kg', { prix: 900, joursPasses: 3 });
-
-    const [sur1Jour] = await lirePrix(1);
-    const [sur7Jours] = await lirePrix(7);
-
-    expect(sur1Jour).toMatchObject({ prix: 400, nombre_collectes: 1 });
-    expect(sur7Jours).toMatchObject({ prix: 650, nombre_collectes: 2 });
-  });
-
-  it('sur 3 jours, une collecte de 5 jours est écartée', async () => {
-    const relais = await scenario.contributeur({ relais: true });
-    await scenario.collecter(relais, 'riz', 'kg', { prix: 600, joursPasses: 2 });
-    await scenario.collecter(relais, 'riz', 'kg', { prix: 1000, joursPasses: 5 });
-
-    const [prix] = await lirePrix(3);
-
-    expect(prix).toMatchObject({ prix: 600, nombre_collectes: 1 });
-  });
-
-  it('la règle de publication s’applique à la période choisie', async () => {
-    const [a, b, c] = [
-      await scenario.contributeur(),
-      await scenario.contributeur(),
-      await scenario.contributeur(),
-    ];
-    await scenario.collecter(a, 'gari', 'kg', { prix: 500 });
-    await scenario.collecter(b, 'gari', 'kg', { prix: 520 });
-    await scenario.collecter(c, 'gari', 'kg', { prix: 540, joursPasses: 3 });
-
-    const [surUnJour] = await lirePrix(1);
-    const [surSeptJours] = await lirePrix(7);
-
-    expect(surUnJour).toMatchObject({ statut: 'pas_assez_de_donnees', prix: null });
-    expect(surSeptJours).toMatchObject({ statut: 'publie', prix: 520 });
-  });
-
-  it('refuse une période hors de 1 à 90 jours', async () => {
-    for (const jours of [0, -3, 91]) {
-      const { error } = await lecteurAnonyme.rpc('prix_courants', { jours });
-      expect(error).not.toBeNull();
-    }
-  });
-});
-
 describe('unités', () => {
   it("une collecte dans une unité non valide pour le produit est rejetée", async () => {
     const relais = await scenario.contributeur({ relais: true });
@@ -215,9 +157,10 @@ describe('lecteur anonyme : lecture seule', () => {
     const auteur = await scenario.contributeur();
     await scenario.collecter(auteur, 'maïs', 'kg', { prix: 400 });
     const { data: maisKg } = await admin
-      .rpc('prix_courants')
+      .from('prix_courants')
+      .select('produit_id, unite_id')
       .eq('marche_id', scenario.marcheId)
-      .single<LignePrix>();
+      .single();
 
     // Une collecte valide : seul un refus de la sécurité peut la faire échouer.
     const creation = await lecteurAnonyme.from('collectes').insert({
