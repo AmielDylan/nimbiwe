@@ -8,6 +8,8 @@ const clair = {
   bordure: '#e6e8eb',
   carte: '#f4f6f8',
   texteSurAccent: '#ffffff',
+  erreur: '#c0392b',
+  succes: '#1e8449',
 };
 
 const sombre: typeof clair = {
@@ -18,6 +20,8 @@ const sombre: typeof clair = {
   bordure: '#2a2d2f',
   carte: '#1e2022',
   texteSurAccent: '#151718',
+  erreur: '#ff8a80',
+  succes: '#6fcf97',
 };
 
 export function useTheme() {

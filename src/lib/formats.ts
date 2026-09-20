@@ -37,13 +37,12 @@ export function formaterAnciennete(dateIso: string): string {
   return `il y a ${Math.floor(jours / 30)} mois`;
 }
 
-function libellePeriode(jours: number): string {
-  return `${jours} jour${jours > 1 ? 's' : ''}`;
+export function formaterNombreDeReleves(nombre: number): string {
+  if (nombre === 0) return 'Aucun relevé sur 7 jours';
+  return `${nombre} relevé${nombre > 1 ? 's' : ''} sur 7 jours`;
 }
 
-export function formaterNombreDeCollectes(nombre: number, jours: number): string {
-  if (nombre === 0) return `Aucune collecte sur ${libellePeriode(jours)}`;
-  return `${nombre} collecte${nombre > 1 ? 's' : ''} sur ${libellePeriode(jours)}`;
+/** 2.5 -> « 2,5 » : virgule décimale à la française. */
+export function formaterQuantite(quantite: number): string {
+  return String(quantite).replace('.', ',');
 }
-
-export { libellePeriode };

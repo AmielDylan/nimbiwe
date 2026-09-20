@@ -29,10 +29,10 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="collecter"
+        name="relever"
         options={{
-          title: 'Collecter',
-          tabBarAccessibilityLabel: 'Collecter, onglet 2 sur 3',
+          title: 'Relever',
+          tabBarAccessibilityLabel: 'Relever, onglet 2 sur 3',
           tabBarIcon: ({ size, focused }) => (
             <AddCircle color={focused ? theme.accent : theme.texteSecondaire} size={size} weight={focused ? 'Filled' : 'Outline'} />
           ),

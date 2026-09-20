@@ -3,22 +3,33 @@
 -- reset` (base locale) et jamais en production : le référentiel réel vit dans
 -- les migrations.
 
-insert into auth.users (id, instance_id, aud, role, phone, phone_confirmed_at, created_at, updated_at) values
-  ('00000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000001', now(), now(), now()),
-  ('00000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000002', now(), now(), now()),
-  ('00000000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000003', now(), now(), now()),
-  ('00000000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000004', now(), now(), now()),
-  ('00000000-0000-4000-8000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000005', now(), now(), now());
+-- L'auth attend des chaînes vides, pas NULL, dans les colonnes de jetons : sans
+-- cela, l'API d'administration ne sait plus lister les comptes.
+insert into auth.users (
+  id, instance_id, aud, role, phone, phone_confirmed_at, created_at, updated_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change,
+  email_change_token_current, phone_change, phone_change_token, reauthentication_token
+) values
+  ('00000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000001', now(), now(), now(), '', '', '', '', '', '', '', ''),
+  ('00000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000002', now(), now(), now(), '', '', '', '', '', '', '', ''),
+  ('00000000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000003', now(), now(), now(), '', '', '', '', '', '', '', ''),
+  ('00000000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000004', now(), now(), now(), '', '', '', '', '', '', '', ''),
+  ('00000000-0000-4000-8000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '22900000005', now(), now(), now(), '', '', '', '', '', '', '', '');
 
-insert into public.profils (id, nom_affiche, est_relais) values
-  ('00000000-0000-4000-8000-000000000001', 'Exemple – relais Ganhi', true),
-  ('00000000-0000-4000-8000-000000000002', 'Exemple – relais Bohicon', true),
-  ('00000000-0000-4000-8000-000000000003', 'Exemple – contributeur 1', false),
-  ('00000000-0000-4000-8000-000000000004', 'Exemple – contributeur 2', false),
-  ('00000000-0000-4000-8000-000000000005', 'Exemple – contributeur 3', false);
+-- Les profils sont créés par la base à la création des comptes : on les complète.
+update public.profils p
+set nom_affiche = e.nom_affiche, est_relais = e.est_relais
+from (values
+  ('00000000-0000-4000-8000-000000000001'::uuid, 'Exemple – relais Ganhi', true),
+  ('00000000-0000-4000-8000-000000000002'::uuid, 'Exemple – relais Bohicon', true),
+  ('00000000-0000-4000-8000-000000000003'::uuid, 'Exemple – contributeur 1', false),
+  ('00000000-0000-4000-8000-000000000004'::uuid, 'Exemple – contributeur 2', false),
+  ('00000000-0000-4000-8000-000000000005'::uuid, 'Exemple – contributeur 3', false)
+) as e (id, nom_affiche, est_relais)
+where p.id = e.id;
 
 -- (auteur, marché, produit, unité, prix total, jours écoulés)
-insert into public.collectes (contributeur_id, marche_id, produit_id, unite_id, prix_total, observe_le)
+insert into public.releves (contributeur_id, marche_id, produit_id, unite_id, prix_total, observe_le)
 select e.auteur::uuid, m.id, p.id, u.id, e.prix, now() - make_interval(days => e.jours)
 from (values
   -- Ganhi : un relais suffit à publier.
@@ -42,4 +53,4 @@ from (values
 join public.marches m on m.nom = e.marche
 join public.produits p on p.nom = e.produit
 join public.unites u on u.symbole = e.unite;
--- « Dantokpa » reste volontairement sans collecte (état vide).
+-- « Dantokpa » reste volontairement sans relevé (état vide).

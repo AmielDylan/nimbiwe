@@ -18,15 +18,15 @@ const ganhiSucre = prixCourant({
   produit_id: 2,
   produit: 'sucre',
   prix: 812.4,
-  nombre_collectes: 1,
-  derniere_collecte_le: ilYaJours(0),
+  nombre_releves: 1,
+  dernier_releve_le: ilYaJours(0),
 });
 const ouandoMais = prixCourant({
   marche_id: 2,
   marche: 'Ouando',
   prix: 1500,
-  nombre_collectes: 5,
-  derniere_collecte_le: ilYaJours(1),
+  nombre_releves: 5,
+  dernier_releve_le: ilYaJours(1),
 });
 const ouandoSucreInsuffisant = prixCourant({
   produit_id: 2,
@@ -35,8 +35,8 @@ const ouandoSucreInsuffisant = prixCourant({
   marche: 'Ouando',
   statut: 'pas_assez_de_donnees',
   prix: null,
-  nombre_collectes: 2,
-  derniere_collecte_le: ilYaJours(12),
+  nombre_releves: 2,
+  dernier_releve_le: ilYaJours(12),
 });
 
 const donnees = {
@@ -46,7 +46,7 @@ const donnees = {
 };
 
 describe('écran Prix', () => {
-  it("affiche le prix courant avec son unité, le nombre de collectes et son ancienneté", async () => {
+  it("affiche le prix courant avec son unité, le nombre de relevés et son ancienneté", async () => {
     simulerApi({ ...donnees, prix_courants: [ganhiMais] });
 
     render(<Prix />);
@@ -55,24 +55,24 @@ describe('écran Prix', () => {
     expect(carte.getByText('Maïs')).toBeOnTheScreen();
     expect(carte.getByText('Ganhi')).toBeOnTheScreen();
     expect(carte.getByText('425 FCFA / kg')).toBeOnTheScreen();
-    expect(carte.getByText('3 collectes sur 7 jours')).toBeOnTheScreen();
-    expect(carte.getByText('Dernière collecte : il y a 2 jours')).toBeOnTheScreen();
+    expect(carte.getByText('3 relevés sur 7 jours')).toBeOnTheScreen();
+    expect(carte.getByText('Dernier relevé : il y a 2 jours')).toBeOnTheScreen();
   });
 
-  it('arrondit le prix, met les milliers en forme et accorde « collecte » au singulier', async () => {
+  it('arrondit le prix, met les milliers en forme et accorde « relevé » au singulier', async () => {
     simulerApi({
       ...donnees,
-      prix_courants: [prixCourant({ prix: 1234.6, nombre_collectes: 1, derniere_collecte_le: ilYaJours(0) })],
+      prix_courants: [prixCourant({ prix: 1234.6, nombre_releves: 1, dernier_releve_le: ilYaJours(0) })],
     });
 
     render(<Prix />);
 
     expect(await screen.findByText('1 235 FCFA / kg')).toBeOnTheScreen();
-    expect(screen.getByText('1 collecte sur 7 jours')).toBeOnTheScreen();
-    expect(screen.getByText('Dernière collecte : à l’instant')).toBeOnTheScreen();
+    expect(screen.getByText('1 relevé sur 7 jours')).toBeOnTheScreen();
+    expect(screen.getByText('Dernier relevé : à l’instant')).toBeOnTheScreen();
   });
 
-  it('dit « pas assez de données » avec la date de la dernière collecte, sans afficher de prix', async () => {
+  it('dit « pas assez de données » avec la date du dernier relevé, sans afficher de prix', async () => {
     simulerApi({ ...donnees, prix_courants: [ouandoSucreInsuffisant] });
 
     render(<Prix />);
@@ -80,7 +80,7 @@ describe('écran Prix', () => {
     const carte = within(await screen.findByTestId('carte-prix'));
     expect(carte.getByText('Sucre')).toBeOnTheScreen();
     expect(carte.getByText('Pas assez de données')).toBeOnTheScreen();
-    expect(carte.getByText('Dernière collecte : il y a 12 jours')).toBeOnTheScreen();
+    expect(carte.getByText('Dernier relevé : il y a 12 jours')).toBeOnTheScreen();
     expect(carte.queryByText(/FCFA/)).not.toBeOnTheScreen();
   });
 
@@ -132,7 +132,7 @@ describe('écran Prix', () => {
     expect(screen.getByText('Aucun prix pour cette sélection pour le moment.')).toBeOnTheScreen();
   });
 
-  it("précise l'ancienneté de la dernière collecte à la seconde, la minute, l'heure ou le jour près", async () => {
+  it("précise l'ancienneté du dernier relevé à la seconde, la minute, l'heure ou le jour près", async () => {
     const anciennetes: [string, string][] = [
       [ilYaSecondes(30), 'il y a 30 sec'],
       [ilYaSecondes(5 * 60 + 10), 'il y a 5 min'],
@@ -144,49 +144,15 @@ describe('écran Prix', () => {
     simulerApi({
       ...donnees,
       prix_courants: anciennetes.map(([date], index) =>
-        prixCourant({ produit_id: 10 + index, derniere_collecte_le: date }),
+        prixCourant({ produit_id: 10 + index, dernier_releve_le: date }),
       ),
     });
 
     render(<Prix />);
 
     for (const [, libelle] of anciennetes) {
-      expect(await screen.findByText(`Dernière collecte : ${libelle}`)).toBeOnTheScreen();
+      expect(await screen.findByText(`Dernier relevé : ${libelle}`)).toBeOnTheScreen();
     }
-  });
-
-  it("propose de resserrer ou d'élargir la période des prix courants, sur 7 jours par défaut", async () => {
-    simulerApi({
-      ...donnees,
-      prix_courants: (jours) => [prixCourant({ prix: jours === 3 ? 480 : 425, nombre_collectes: jours })],
-    });
-    render(<Prix />);
-    await screen.findByText('425 FCFA / kg');
-
-    expect(screen.getByRole('button', { name: '7 jours' })).toBeSelected();
-    expect(screen.getByText('7 collectes sur 7 jours')).toBeOnTheScreen();
-
-    fireEvent.press(screen.getByRole('button', { name: '3 jours' }));
-
-    expect(await screen.findByText('480 FCFA / kg')).toBeOnTheScreen();
-    expect(screen.getByText('3 collectes sur 3 jours')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: '3 jours' })).toBeSelected();
-    expect(screen.getByRole('button', { name: '7 jours' })).not.toBeSelected();
-    expect(screen.getByRole('button', { name: '1 jour' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: '30 jours' })).toBeOnTheScreen();
-  });
-
-  it("garde la période précédente quand le changement de période échoue", async () => {
-    simulerApi({ ...donnees, prix_courants: [ganhiMais] });
-    render(<Prix />);
-    await screen.findByText('425 FCFA / kg');
-
-    simulerPanne();
-    fireEvent.press(screen.getByRole('button', { name: '1 jour' }));
-
-    expect(await screen.findByText('Actualisation impossible. Vérifiez votre connexion.')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: '7 jours' })).toBeSelected();
-    expect(screen.getByText('425 FCFA / kg')).toBeOnTheScreen();
   });
 
   it('affiche un état de chargement', async () => {

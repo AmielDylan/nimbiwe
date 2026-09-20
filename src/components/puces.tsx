@@ -12,7 +12,7 @@ type Props = {
   onChoisir: (id: number | null) => void;
 };
 
-export function Filtres({ toutLibelle, options, selection, onChoisir }: Props) {
+export function Puces({ toutLibelle, options, selection, onChoisir }: Props) {
   const theme = useTheme();
   const puces: { id: number | null; libelle: string }[] = toutLibelle
     ? [{ id: null, libelle: toutLibelle }, ...options]

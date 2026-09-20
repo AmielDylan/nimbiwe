@@ -1,11 +1,11 @@
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
+import { Puces } from '@/components/puces';
 import { useTheme } from '@/theme';
 
 import { CartePrix } from './carte-prix';
-import { Filtres } from './filtres';
-import { capitaliser, libellePeriode } from './formats';
-import { PERIODES, usePrix } from './use-prix';
+import { capitaliser } from '@/lib/formats';
+import { usePrix } from './use-prix';
 
 export function Prix() {
   const theme = useTheme();
@@ -14,8 +14,6 @@ export function Prix() {
     actualisation,
     actualiser,
     reessayer,
-    periode,
-    choisirPeriode,
     marcheId,
     choisirMarche,
     produitId,
@@ -31,7 +29,7 @@ export function Prix() {
       contentContainerStyle={styles.contenu}
       data={prixAffiches}
       keyExtractor={(p) => `${p.marche_id}-${p.produit_id}-${p.unite_id}`}
-      renderItem={({ item }) => <CartePrix prix={item} jours={etat.statut === 'pret' ? etat.jours : periode} />}
+      renderItem={({ item }) => <CartePrix prix={item} />}
       refreshControl={<RefreshControl refreshing={actualisation} onRefresh={actualiser} />}
       ListHeaderComponent={
         etat.statut === 'pret' ? (
@@ -41,22 +39,17 @@ export function Prix() {
                 Actualisation impossible. Vérifiez votre connexion.
               </Text>
             )}
-            <Filtres
+            <Puces
               toutLibelle="Tous les marchés"
               options={etat.marches.map((m) => ({ id: m.id, libelle: m.nom }))}
               selection={marcheId}
               onChoisir={choisirMarche}
             />
-            <Filtres
+            <Puces
               toutLibelle="Tous les produits"
               options={etat.produits.map((p) => ({ id: p.id, libelle: capitaliser(p.nom) }))}
               selection={produitId}
               onChoisir={choisirProduit}
-            />
-            <Filtres
-              options={PERIODES.map((jours) => ({ id: jours, libelle: libellePeriode(jours) }))}
-              selection={periode}
-              onChoisir={(jours) => jours !== null && choisirPeriode(jours)}
             />
           </View>
         ) : null
