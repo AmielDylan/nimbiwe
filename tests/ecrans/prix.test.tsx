@@ -4,6 +4,7 @@ import { Prix } from '@/screens/prix';
 
 import {
   ilYaJours,
+  ilYaSecondes,
   marches,
   prixCourant,
   produits,
@@ -68,7 +69,7 @@ describe('écran Prix', () => {
 
     expect(await screen.findByText('1 235 FCFA / kg')).toBeOnTheScreen();
     expect(screen.getByText('1 collecte sur 7 jours')).toBeOnTheScreen();
-    expect(screen.getByText('Dernière collecte : aujourd’hui')).toBeOnTheScreen();
+    expect(screen.getByText('Dernière collecte : à l’instant')).toBeOnTheScreen();
   });
 
   it('dit « pas assez de données » avec la date de la dernière collecte, sans afficher de prix', async () => {
@@ -129,6 +130,63 @@ describe('écran Prix', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Sucre' }));
 
     expect(screen.getByText('Aucun prix pour cette sélection pour le moment.')).toBeOnTheScreen();
+  });
+
+  it("précise l'ancienneté de la dernière collecte à la seconde, la minute, l'heure ou le jour près", async () => {
+    const anciennetes: [string, string][] = [
+      [ilYaSecondes(30), 'il y a 30 sec'],
+      [ilYaSecondes(5 * 60 + 10), 'il y a 5 min'],
+      [ilYaSecondes(3 * 3600 + 60), 'il y a 3 h'],
+      [ilYaJours(1), 'hier'],
+      [ilYaJours(2), 'il y a 2 jours'],
+      [ilYaJours(65), 'il y a 2 mois'],
+    ];
+    simulerApi({
+      ...donnees,
+      prix_courants: anciennetes.map(([date], index) =>
+        prixCourant({ produit_id: 10 + index, derniere_collecte_le: date }),
+      ),
+    });
+
+    render(<Prix />);
+
+    for (const [, libelle] of anciennetes) {
+      expect(await screen.findByText(`Dernière collecte : ${libelle}`)).toBeOnTheScreen();
+    }
+  });
+
+  it("propose de resserrer ou d'élargir la période des prix courants, sur 7 jours par défaut", async () => {
+    simulerApi({
+      ...donnees,
+      prix_courants: (jours) => [prixCourant({ prix: jours === 3 ? 480 : 425, nombre_collectes: jours })],
+    });
+    render(<Prix />);
+    await screen.findByText('425 FCFA / kg');
+
+    expect(screen.getByRole('button', { name: '7 jours' })).toBeSelected();
+    expect(screen.getByText('7 collectes sur 7 jours')).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByRole('button', { name: '3 jours' }));
+
+    expect(await screen.findByText('480 FCFA / kg')).toBeOnTheScreen();
+    expect(screen.getByText('3 collectes sur 3 jours')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: '3 jours' })).toBeSelected();
+    expect(screen.getByRole('button', { name: '7 jours' })).not.toBeSelected();
+    expect(screen.getByRole('button', { name: '1 jour' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: '30 jours' })).toBeOnTheScreen();
+  });
+
+  it("garde la période précédente quand le changement de période échoue", async () => {
+    simulerApi({ ...donnees, prix_courants: [ganhiMais] });
+    render(<Prix />);
+    await screen.findByText('425 FCFA / kg');
+
+    simulerPanne();
+    fireEvent.press(screen.getByRole('button', { name: '1 jour' }));
+
+    expect(await screen.findByText('Actualisation impossible. Vérifiez votre connexion.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: '7 jours' })).toBeSelected();
+    expect(screen.getByText('425 FCFA / kg')).toBeOnTheScreen();
   });
 
   it('affiche un état de chargement', async () => {

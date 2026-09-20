@@ -2,7 +2,7 @@
 --
 -- Principe : le serveur décide. Les tables sont fermées par la sécurité par
 -- ligne (aucune politique : personne ne lit ni n'écrit via l'API pour
--- l'instant) ; le public ne lit que la vue `prix_courants`, calculée ici.
+-- l'instant) ; le public ne lit que la fonction `prix_courants`, calculée ici.
 
 -- Profil d'un compte. Le statut de relais est une donnée du compte, attribuée
 -- à la main par le développeur depuis le tableau de bord de la base.
@@ -38,55 +38,82 @@ create index collectes_prix_courant_idx
 
 alter table public.collectes enable row level security;
 
--- Prix courant : médiane du prix unitaire des collectes des 7 derniers
--- jours, pour un même produit, marché et unité. Publié seulement si au moins un
--- relais a collecté, ou si au moins trois contributeurs différents ont collecté ;
--- sinon `prix` est nul et `derniere_collecte_le` indique le dernière collecte.
+-- Prix courant : médiane du prix unitaire des collectes des `jours` derniers
+-- jours (7 par défaut, de 1 à 90), pour un même produit, marché et unité. Publié
+-- seulement si au moins un relais a collecté, ou si au moins trois contributeurs
+-- différents ont collecté, dans cette période ; sinon `prix` est nul et
+-- `derniere_collecte_le` indique la dernière collecte.
 --
--- La vue s'exécute avec les droits de son propriétaire : c'est voulu, elle est
--- la seule porte de lecture vers les collectes et les profils.
-create view public.prix_courants as
-with collectes_qualifiees as (
-  select
-    s.produit_id,
-    s.unite_id,
-    s.marche_id,
-    s.contributeur_id,
-    s.prix_unitaire,
-    s.observe_le,
-    pr.est_relais,
-    s.observe_le >= now() - interval '7 days' as recent
-  from public.collectes s
-  join public.profils pr on pr.id = s.contributeur_id
-),
-agregats as (
-  select
-    produit_id,
-    unite_id,
-    marche_id,
-    count(*) filter (where recent) as nombre_collectes,
-    (count(*) filter (where recent and est_relais) >= 1
-      or count(distinct contributeur_id) filter (where recent) >= 3) as publiable,
-    percentile_cont(0.5) within group (order by prix_unitaire) filter (where recent) as mediane,
-    max(observe_le) as derniere_collecte_le
-  from collectes_qualifiees
-  group by produit_id, unite_id, marche_id
+-- La fonction s'exécute avec les droits de son propriétaire : c'est voulu, elle
+-- est la seule porte de lecture vers les collectes et les profils (voir ADR 0002).
+create function public.prix_courants(jours integer default 7)
+returns table (
+  produit_id bigint,
+  unite_id bigint,
+  marche_id bigint,
+  produit text,
+  unite text,
+  marche text,
+  statut text,
+  prix double precision,
+  nombre_collectes bigint,
+  derniere_collecte_le timestamptz
 )
-select
-  a.produit_id,
-  a.unite_id,
-  a.marche_id,
-  p.nom as produit,
-  u.symbole as unite,
-  m.nom as marche,
-  case when a.publiable then 'publie' else 'pas_assez_de_donnees' end as statut,
-  case when a.publiable then a.mediane end as prix,
-  a.nombre_collectes,
-  a.derniere_collecte_le
-from agregats a
-join public.produits p on p.id = a.produit_id
-join public.unites u on u.id = a.unite_id
-join public.marches m on m.id = a.marche_id;
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if jours is null or jours < 1 or jours > 90 then
+    raise exception 'La période doit être comprise entre 1 et 90 jours'
+      using errcode = '22023';
+  end if;
 
-revoke all on public.prix_courants from anon, authenticated;
-grant select on public.prix_courants to anon, authenticated;
+  return query
+  with collectes_qualifiees as (
+    select
+      c.produit_id,
+      c.unite_id,
+      c.marche_id,
+      c.contributeur_id,
+      c.prix_unitaire,
+      c.observe_le,
+      pr.est_relais,
+      c.observe_le >= now() - make_interval(days => jours) as recent
+    from public.collectes c
+    join public.profils pr on pr.id = c.contributeur_id
+  ),
+  agregats as (
+    select
+      q.produit_id,
+      q.unite_id,
+      q.marche_id,
+      count(*) filter (where q.recent) as nombre_collectes,
+      (count(*) filter (where q.recent and q.est_relais) >= 1
+        or count(distinct q.contributeur_id) filter (where q.recent) >= 3) as publiable,
+      percentile_cont(0.5) within group (order by q.prix_unitaire) filter (where q.recent) as mediane,
+      max(q.observe_le) as derniere_collecte_le
+    from collectes_qualifiees q
+    group by q.produit_id, q.unite_id, q.marche_id
+  )
+  select
+    a.produit_id,
+    a.unite_id,
+    a.marche_id,
+    p.nom,
+    u.symbole,
+    m.nom,
+    case when a.publiable then 'publie' else 'pas_assez_de_donnees' end,
+    case when a.publiable then a.mediane end,
+    a.nombre_collectes,
+    a.derniere_collecte_le
+  from agregats a
+  join public.produits p on p.id = a.produit_id
+  join public.unites u on u.id = a.unite_id
+  join public.marches m on m.id = a.marche_id;
+end;
+$$;
+
+revoke all on function public.prix_courants(integer) from public, anon, authenticated;
+grant execute on function public.prix_courants(integer) to anon, authenticated;
