@@ -1,4 +1,4 @@
--- Profils, collectes et prix courants.
+-- Profils, relevés et prix courants.
 --
 -- Principe : le serveur décide. Les tables sont fermées par la sécurité par
 -- ligne (aucune politique : personne ne lit ni n'écrit via l'API pour
@@ -15,9 +15,9 @@ create table public.profils (
 
 alter table public.profils enable row level security;
 
--- Une collecte : un prix total pour une quantité d'une unité, d'un produit,
+-- Un relevé : un prix total pour une quantité d'une unité, d'un produit,
 -- sur un marché, par un contributeur, observé à une date donnée.
-create table public.collectes (
+create table public.releves (
   id uuid primary key default gen_random_uuid(),
   produit_id bigint not null,
   unite_id bigint not null,
@@ -35,20 +35,20 @@ create table public.collectes (
   foreign key (produit_id, unite_id) references public.produits_unites (produit_id, unite_id)
 );
 
-create index collectes_prix_courant_idx
-  on public.collectes (marche_id, produit_id, unite_id, observe_le);
+create index releves_prix_courant_idx
+  on public.releves (marche_id, produit_id, unite_id, observe_le);
 
-alter table public.collectes enable row level security;
+alter table public.releves enable row level security;
 
--- Prix courant : médiane du prix unitaire des collectes des 7 derniers
+-- Prix courant : médiane du prix unitaire des relevés des 7 derniers
 -- jours, pour un même produit, marché et unité. Publié seulement si au moins un
--- relais a collecté, ou si au moins trois contributeurs différents ont collecté ;
--- sinon `prix` est nul et `derniere_collecte_le` indique le dernière collecte.
+-- relais a relevé, ou si au moins trois contributeurs différents ont relevé ;
+-- sinon `prix` est nul et `dernier_releve_le` indique le dernier relevé.
 --
 -- La vue s'exécute avec les droits de son propriétaire : c'est voulu, elle est
--- la seule porte de lecture vers les collectes et les profils.
+-- la seule porte de lecture vers les relevés et les profils.
 create view public.prix_courants as
-with collectes_qualifiees as (
+with releves_qualifies as (
   select
     s.produit_id,
     s.unite_id,
@@ -58,7 +58,7 @@ with collectes_qualifiees as (
     s.observe_le,
     pr.est_relais,
     s.observe_le >= now() - interval '7 days' as recent
-  from public.collectes s
+  from public.releves s
   join public.profils pr on pr.id = s.contributeur_id
 ),
 agregats as (
@@ -66,12 +66,12 @@ agregats as (
     produit_id,
     unite_id,
     marche_id,
-    count(*) filter (where recent) as nombre_collectes,
+    count(*) filter (where recent) as nombre_releves,
     (count(*) filter (where recent and est_relais) >= 1
       or count(distinct contributeur_id) filter (where recent) >= 3) as publiable,
     percentile_cont(0.5) within group (order by prix_unitaire) filter (where recent) as mediane,
-    max(observe_le) as derniere_collecte_le
-  from collectes_qualifiees
+    max(observe_le) as dernier_releve_le
+  from releves_qualifies
   group by produit_id, unite_id, marche_id
 )
 select
@@ -83,8 +83,8 @@ select
   m.nom as marche,
   case when a.publiable then 'publie' else 'pas_assez_de_donnees' end as statut,
   case when a.publiable then a.mediane end as prix,
-  a.nombre_collectes,
-  a.derniere_collecte_le
+  a.nombre_releves,
+  a.dernier_releve_le
 from agregats a
 join public.produits p on p.id = a.produit_id
 join public.unites u on u.id = a.unite_id

@@ -6,7 +6,7 @@ import { useTheme } from '@/theme';
 import { Formulaire } from './formulaire';
 import { InviteConnexion } from './invite-connexion';
 
-export function Collecter() {
+export function Relever() {
   const theme = useTheme();
   const session = useSession();
 

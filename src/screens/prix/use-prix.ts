@@ -11,8 +11,8 @@ export type PrixCourant = {
   marche: string;
   statut: 'publie' | 'pas_assez_de_donnees';
   prix: number | null;
-  nombre_collectes: number;
-  derniere_collecte_le: string;
+  nombre_releves: number;
+  dernier_releve_le: string;
 };
 
 /** Une ligne du référentiel (marché ou produit). */

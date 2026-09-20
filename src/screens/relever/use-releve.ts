@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 import type { Produit } from './use-referentiel';
 
-// Codes de refus renvoyés par la base (voir la migration « collecter_un_prix »).
+// Codes de refus renvoyés par la base (voir la migration « relever_un_prix »).
 const COMPTE_BLOQUE = 'NB001';
 const LIMITE_QUOTIDIENNE = 'NB002';
 const HORS_BORNES = 'NB003';
@@ -13,7 +13,7 @@ const DATE_INVALIDE = 'NB004';
 
 type Message = { texte: string; erreur: boolean };
 
-// Mêmes plafonds que les contraintes de la table `collectes`.
+// Mêmes plafonds que les contraintes de la table `releves`.
 const PRIX_MAX = 99_999_999;
 const QUANTITE_MAX = 99_999;
 
@@ -24,8 +24,8 @@ function nombre(saisie: string, decimales: boolean): number {
   return forme.test(propre) ? Number(propre.replace(',', '.')) : Number.NaN;
 }
 
-/** Le formulaire de collecte : saisie, garde-fous du serveur et envoi. */
-export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
+/** Le formulaire de relevé : saisie, garde-fous du serveur et envoi. */
+export function useReleve(produits: Produit[], apresEnvoi: () => void) {
   const [produitId, setProduitId] = useState<number | null>(null);
   const [marcheId, setMarcheId] = useState<number | null>(null);
   const [uniteId, setUniteId] = useState<number | null>(null);
@@ -100,7 +100,7 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
     setEnvoiEnCours(true);
     setMessage(null);
     // Le client n'envoie que les champs autorisés ; le reste est décidé par le serveur.
-    const { error } = await supabase.from('collectes').insert({
+    const { error } = await supabase.from('releves').insert({
       produit_id: produit.id,
       unite_id: unite.id,
       marche_id: marcheId,
@@ -114,7 +114,7 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
     if (!error) {
       setHorsBornes(null);
       setPrixSaisi('');
-      setMessage({ texte: 'Merci ! Votre collecte est enregistrée.', erreur: false });
+      setMessage({ texte: 'Merci ! Votre relevé est enregistré.', erreur: false });
       apresEnvoi();
       return;
     }
@@ -158,12 +158,12 @@ export function useCollecte(produits: Produit[], apresEnvoi: () => void) {
 function messageDeRefus(code: string | undefined): string {
   switch (code) {
     case LIMITE_QUOTIDIENNE:
-      return 'Vous avez atteint la limite de collectes du jour pour ce produit sur ce marché. Réessayez demain.';
+      return 'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.';
     case COMPTE_BLOQUE:
-      return "Votre compte ne peut plus collecter de prix. Contactez l'équipe Nimbiwe.";
+      return "Votre compte ne peut plus relever de prix. Contactez l'équipe Nimbiwe.";
     case DATE_INVALIDE:
       return "La date de votre téléphone semble incorrecte. Vérifiez-la, puis réessayez.";
     default:
-      return "Impossible d'envoyer la collecte. Vérifiez votre connexion et réessayez : votre saisie est conservée.";
+      return "Impossible d'envoyer le relevé. Vérifiez votre connexion et réessayez : votre saisie est conservée.";
   }
 }

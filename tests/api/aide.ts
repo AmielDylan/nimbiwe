@@ -24,7 +24,7 @@ export function ilYaJours(jours: number): string {
   return new Date(Date.now() - jours * JOUR).toISOString();
 }
 
-type Collecte = { prix: number; joursPasses?: number; quantite?: number };
+type Releve = { prix: number; joursPasses?: number; quantite?: number };
 
 /**
  * Un marché jetable avec ses contributeurs : chaque test travaille sur son
@@ -65,13 +65,13 @@ export async function creerScenario() {
     return data.id as number;
   }
 
-  async function collecter(
+  async function relever(
     contributeurId: string,
     produit: string,
     unite: string,
-    { prix, joursPasses = 0, quantite = 1 }: Collecte,
+    { prix, joursPasses = 0, quantite = 1 }: Releve,
   ) {
-    const { error: erreur } = await admin.from('collectes').insert({
+    const { error: erreur } = await admin.from('releves').insert({
       marche_id: marche.id,
       produit_id: await id('produits', 'nom', produit),
       unite_id: await id('unites', 'symbole', unite),
@@ -84,12 +84,12 @@ export async function creerScenario() {
   }
 
   async function nettoyer() {
-    await admin.from('collectes').delete().eq('marche_id', marche.id);
+    await admin.from('releves').delete().eq('marche_id', marche.id);
     await admin.from('marches').delete().eq('id', marche.id);
     for (const utilisateur of contributeurs) await admin.auth.admin.deleteUser(utilisateur);
   }
 
-  return { marcheId: marche.id as number, contributeur, collecter, nettoyer };
+  return { marcheId: marche.id as number, contributeur, relever, nettoyer };
 }
 
 /** Numéros de test de la base locale (supabase/config.toml, [auth.sms.test_otp]) : aucun SMS réel. */
@@ -143,9 +143,9 @@ export async function contributeurConnecte() {
   return {
     client,
     id,
-    /** Supprime le compte et ses collectes (à appeler en fin de test). */
+    /** Supprime le compte et ses relevés (à appeler en fin de test). */
     async nettoyer() {
-      await admin.from('collectes').delete().eq('contributeur_id', id);
+      await admin.from('releves').delete().eq('contributeur_id', id);
       await admin.auth.admin.deleteUser(id);
     },
   };

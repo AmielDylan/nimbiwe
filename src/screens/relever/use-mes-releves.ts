@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
-export type MaCollecte = {
+export type MonReleve = {
   id: string;
   prix_total: number;
   quantite: number;
@@ -12,24 +12,24 @@ export type MaCollecte = {
   marches: { nom: string };
 };
 
-/** Les dernières collectes du contributeur connecté (la base ne lui montre que les siennes). */
-export function useMesCollectes() {
-  const [collectes, setCollectes] = useState<MaCollecte[] | null>(null); // null : pas encore chargées
+/** Les derniers relevés du contributeur connecté (la base ne lui montre que les siens). */
+export function useMesReleves() {
+  const [releves, setReleves] = useState<MonReleve[] | null>(null); // null : pas encore chargés
   const [erreur, setErreur] = useState(false);
 
   const recharger = useCallback(async () => {
     const { data, error } = await supabase
-      .from('collectes')
+      .from('releves')
       .select('id, prix_total, quantite, observe_le, produits(nom), unites(symbole), marches(nom)')
       .order('cree_le', { ascending: false })
       .limit(10);
     setErreur(Boolean(error));
-    if (data) setCollectes(data as unknown as MaCollecte[]);
+    if (data) setReleves(data as unknown as MonReleve[]);
   }, []);
 
   useEffect(() => {
     recharger();
   }, [recharger]);
 
-  return { collectes, erreur, recharger };
+  return { releves, erreur, recharger };
 }

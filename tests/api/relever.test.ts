@@ -1,6 +1,6 @@
 import { admin, contributeurConnecte, creerScenario, identifiants, ilYaJours, lecteurAnonyme } from './aide';
 
-// Codes d'erreur propres à Nimbiwe, levés par la base (voir la migration « collecter_un_prix »).
+// Codes d'erreur propres à Nimbiwe, levés par la base (voir la migration « relever_un_prix »).
 const COMPTE_BLOQUE = 'NB001';
 const LIMITE_QUOTIDIENNE = 'NB002';
 const HORS_BORNES = 'NB003';
@@ -32,12 +32,12 @@ async function contributeur() {
 }
 
 async function lireSeuil(): Promise<number> {
-  const { data } = await admin.from('parametres').select('valeur').eq('cle', 'collectes_max_par_jour').single();
+  const { data } = await admin.from('parametres').select('valeur').eq('cle', 'releves_max_par_jour').single();
   return data!.valeur as number;
 }
 
-/** Une collecte comme l'app l'envoie : seulement les champs autorisés. */
-async function collecte(produit: string, unite: string, champs: Record<string, unknown> = {}) {
+/** Un relevé comme l'app l'envoie : seulement les champs autorisés. */
+async function releve(produit: string, unite: string, champs: Record<string, unknown> = {}) {
   return {
     ...(await identifiants(produit, unite)),
     marche_id: scenario.marcheId,
@@ -47,44 +47,44 @@ async function collecte(produit: string, unite: string, champs: Record<string, u
   };
 }
 
-describe('collecter un prix', () => {
-  it('un contributeur connecté collecte un prix, qui contribue au prix courant', async () => {
+describe('relever un prix', () => {
+  it('un contributeur connecté relève un prix, qui contribue au prix courant', async () => {
     const auteur = await contributeur();
     const a = await scenario.contributeur();
     const b = await scenario.contributeur();
-    await scenario.collecter(a, 'maïs', 'kg', { prix: 400 });
-    await scenario.collecter(b, 'maïs', 'kg', { prix: 600 });
+    await scenario.relever(a, 'maïs', 'kg', { prix: 400 });
+    await scenario.relever(b, 'maïs', 'kg', { prix: 600 });
 
-    const { error } = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg', { prix_total: 500 }));
+    const { error } = await auteur.client.from('releves').insert(await releve('maïs', 'kg', { prix_total: 500 }));
 
     expect(error).toBeNull();
     const { data: prix } = await lecteurAnonyme
       .from('prix_courants')
-      .select('statut, prix, nombre_collectes')
+      .select('statut, prix, nombre_releves')
       .eq('marche_id', scenario.marcheId)
       .single();
-    expect(prix).toMatchObject({ statut: 'publie', prix: 500, nombre_collectes: 3 });
+    expect(prix).toMatchObject({ statut: 'publie', prix: 500, nombre_releves: 3 });
   });
 
-  it('le serveur calcule le prix unitaire et attribue la collecte au contributeur connecté', async () => {
+  it('le serveur calcule le prix unitaire et attribue le relevé au contributeur connecté', async () => {
     const auteur = await contributeur();
 
-    await auteur.client.from('collectes').insert(await collecte('riz', 'kg', { prix_total: 1000, quantite: 2 }));
+    await auteur.client.from('releves').insert(await releve('riz', 'kg', { prix_total: 1000, quantite: 2 }));
 
-    const { data } = await auteur.client.from('collectes').select('prix_unitaire, contributeur_id').single();
+    const { data } = await auteur.client.from('releves').select('prix_unitaire, contributeur_id').single();
     expect(data).toEqual({ prix_unitaire: 500, contributeur_id: auteur.id });
   });
 
   it("refuse une unité qui n'est pas valide pour le produit", async () => {
     const auteur = await contributeur();
 
-    const { error } = await auteur.client.from('collectes').insert(await collecte('huile végétale', 'kg'));
+    const { error } = await auteur.client.from('releves').insert(await releve('huile végétale', 'kg'));
 
     expect(error?.code).toBe(CLE_ETRANGERE);
   });
 
-  it("un lecteur non connecté ne peut pas collecter", async () => {
-    const { error } = await lecteurAnonyme.from('collectes').insert(await collecte('maïs', 'kg'));
+  it("un lecteur non connecté ne peut pas relever", async () => {
+    const { error } = await lecteurAnonyme.from('releves').insert(await releve('maïs', 'kg'));
 
     expect(error?.code).toBe(REFUSE_PAR_LA_SECURITE);
   });
@@ -99,30 +99,30 @@ describe("le client n'écrit que les champs autorisés", () => {
   ])('refuse de forger %s', async (_nom, champ, codeAttendu) => {
     const auteur = await contributeur();
 
-    const { error } = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg', champ));
+    const { error } = await auteur.client.from('releves').insert(await releve('maïs', 'kg', champ));
 
     expect(error?.code).toBe(codeAttendu);
-    const { data } = await admin.from('collectes').select('id').eq('marche_id', scenario.marcheId);
+    const { data } = await admin.from('releves').select('id').eq('marche_id', scenario.marcheId);
     expect(data).toEqual([]);
   });
 
-  it('ne permet pas de désigner un autre auteur pour la collecte', async () => {
+  it('ne permet pas de désigner un autre auteur pour le relevé', async () => {
     const auteur = await contributeur();
     const autre = await contributeur();
 
     const { error } = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { contributeur_id: autre.id }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { contributeur_id: autre.id }));
 
     expect(error?.code).toBe(REFUSE_PAR_LA_SECURITE);
   });
 
-  it('ne permet ni de modifier ni de supprimer une collecte envoyée', async () => {
+  it('ne permet ni de modifier ni de supprimer un relevé envoyé', async () => {
     const auteur = await contributeur();
-    await auteur.client.from('collectes').insert(await collecte('maïs', 'kg'));
+    await auteur.client.from('releves').insert(await releve('maïs', 'kg'));
 
-    const modification = await auteur.client.from('collectes').update({ prix_total: 1 }).eq('contributeur_id', auteur.id);
-    const suppression = await auteur.client.from('collectes').delete().eq('contributeur_id', auteur.id);
+    const modification = await auteur.client.from('releves').update({ prix_total: 1 }).eq('contributeur_id', auteur.id);
+    const suppression = await auteur.client.from('releves').delete().eq('contributeur_id', auteur.id);
 
     expect(modification.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
     expect(suppression.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
@@ -142,11 +142,11 @@ describe('valeurs aberrantes', () => {
     const auteur = await contributeur();
 
     const { error } = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { ...champs, hors_bornes_confirme: true }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { ...champs, hors_bornes_confirme: true }));
 
     expect(error?.code).toBe(CONTRAINTE_VIOLEE);
-    const { data } = await admin.from('collectes').select('id').eq('marche_id', scenario.marcheId);
+    const { data } = await admin.from('releves').select('id').eq('marche_id', scenario.marcheId);
     expect(data).toEqual([]);
   });
 
@@ -154,8 +154,8 @@ describe('valeurs aberrantes', () => {
     const auteur = await contributeur();
 
     const { error } = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { prix_total: 5000, hors_bornes_confirme: null }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { prix_total: 5000, hors_bornes_confirme: null }));
 
     expect(error?.code).toBe(HORS_BORNES);
   });
@@ -168,7 +168,7 @@ describe('bornes plausibles', () => {
     const { data: unite } = await admin.from('unites').select('id').eq('symbole', 'kg').single();
     await admin.from('produits_unites').insert({ produit_id: produit!.id, unite_id: unite!.id });
     try {
-      const { error } = await auteur.client.from('collectes').insert({
+      const { error } = await auteur.client.from('releves').insert({
         produit_id: produit!.id,
         unite_id: unite!.id,
         marche_id: scenario.marcheId,
@@ -177,10 +177,10 @@ describe('bornes plausibles', () => {
       });
 
       expect(error).toBeNull();
-      const { data } = await auteur.client.from('collectes').select('hors_bornes').eq('produit_id', produit!.id).single();
+      const { data } = await auteur.client.from('releves').select('hors_bornes').eq('produit_id', produit!.id).single();
       expect(data?.hors_bornes).toBe(false);
     } finally {
-      await admin.from('collectes').delete().eq('produit_id', produit!.id);
+      await admin.from('releves').delete().eq('produit_id', produit!.id);
       await admin.from('produits_unites').delete().eq('produit_id', produit!.id);
       await admin.from('produits').delete().eq('id', produit!.id);
     }
@@ -189,12 +189,12 @@ describe('bornes plausibles', () => {
   it("un prix hors bornes est refusé tant que le contributeur ne le confirme pas, dans le sens indiqué", async () => {
     const auteur = await contributeur();
 
-    const trop = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg', { prix_total: 5000 }));
-    const peu = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg', { prix_total: 10 }));
+    const trop = await auteur.client.from('releves').insert(await releve('maïs', 'kg', { prix_total: 5000 }));
+    const peu = await auteur.client.from('releves').insert(await releve('maïs', 'kg', { prix_total: 10 }));
 
     expect(trop.error).toMatchObject({ code: HORS_BORNES, hint: 'haut' });
     expect(peu.error).toMatchObject({ code: HORS_BORNES, hint: 'bas' });
-    const { data } = await admin.from('collectes').select('id').eq('marche_id', scenario.marcheId);
+    const { data } = await admin.from('releves').select('id').eq('marche_id', scenario.marcheId);
     expect(data).toEqual([]);
   });
 
@@ -202,11 +202,11 @@ describe('bornes plausibles', () => {
     const auteur = await contributeur();
 
     const { error } = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { prix_total: 5000, hors_bornes_confirme: true }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { prix_total: 5000, hors_bornes_confirme: true }));
 
     expect(error).toBeNull();
-    const { data } = await auteur.client.from('collectes').select('hors_bornes, hors_bornes_confirme').single();
+    const { data } = await auteur.client.from('releves').select('hors_bornes, hors_bornes_confirme').single();
     expect(data).toEqual({ hors_bornes: true, hors_bornes_confirme: true });
   });
 
@@ -214,41 +214,41 @@ describe('bornes plausibles', () => {
     const auteur = await contributeur();
 
     await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { prix_total: 450, hors_bornes_confirme: true }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { prix_total: 450, hors_bornes_confirme: true }));
 
-    const { data } = await auteur.client.from('collectes').select('hors_bornes, hors_bornes_confirme').single();
+    const { data } = await auteur.client.from('releves').select('hors_bornes, hors_bornes_confirme').single();
     expect(data).toEqual({ hors_bornes: false, hors_bornes_confirme: false });
   });
 
   it("juge le prix unitaire : 900 FCFA pour 2 kg de maïs est dans les bornes", async () => {
     const auteur = await contributeur();
 
-    const { error } = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg', { prix_total: 900, quantite: 2 }));
+    const { error } = await auteur.client.from('releves').insert(await releve('maïs', 'kg', { prix_total: 900, quantite: 2 }));
 
     expect(error).toBeNull();
   });
 });
 
 describe('limite de fréquence', () => {
-  it('refuse la collecte excédentaire du jour pour un même produit et marché, avec le seuil par défaut de 5', async () => {
+  it('refuse le relevé excédentaire du jour pour un même produit et marché, avec le seuil par défaut de 5', async () => {
     const auteur = await contributeur();
     for (let i = 0; i < 5; i++) {
-      const { error } = await auteur.client.from('collectes').insert(await collecte('gari', 'kg', { prix_total: 500 + i }));
+      const { error } = await auteur.client.from('releves').insert(await releve('gari', 'kg', { prix_total: 500 + i }));
       expect(error).toBeNull();
     }
 
-    const sixieme = await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
+    const sixieme = await auteur.client.from('releves').insert(await releve('gari', 'kg'));
 
     expect(sixieme.error?.code).toBe(LIMITE_QUOTIDIENNE);
   });
 
   it('tient la limite même quand les envois arrivent en même temps', async () => {
     const auteur = await contributeur();
-    const ligne = await collecte('gari', 'kg');
+    const ligne = await releve('gari', 'kg');
 
     const reponses = await Promise.all(
-      Array.from({ length: 10 }, () => auteur.client.from('collectes').insert(ligne)),
+      Array.from({ length: 10 }, () => auteur.client.from('releves').insert(ligne)),
     );
 
     expect(reponses.filter((r) => r.error === null)).toHaveLength(5);
@@ -259,33 +259,33 @@ describe('limite de fréquence', () => {
     const auteur = await contributeur();
     const autre = await contributeur();
     const seuilInitial = await lireSeuil();
-    await admin.from('parametres').update({ valeur: 1 }).eq('cle', 'collectes_max_par_jour');
+    await admin.from('parametres').update({ valeur: 1 }).eq('cle', 'releves_max_par_jour');
     try {
-      await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
+      await auteur.client.from('releves').insert(await releve('gari', 'kg'));
 
-      const autreProduit = await auteur.client.from('collectes').insert(await collecte('riz', 'kg', { prix_total: 700 }));
-      const autreContributeur = await autre.client.from('collectes').insert(await collecte('gari', 'kg'));
+      const autreProduit = await auteur.client.from('releves').insert(await releve('riz', 'kg', { prix_total: 700 }));
+      const autreContributeur = await autre.client.from('releves').insert(await releve('gari', 'kg'));
 
       expect(autreProduit.error).toBeNull();
       expect(autreContributeur.error).toBeNull();
     } finally {
-      await admin.from('parametres').update({ valeur: seuilInitial }).eq('cle', 'collectes_max_par_jour');
+      await admin.from('parametres').update({ valeur: seuilInitial }).eq('cle', 'releves_max_par_jour');
     }
   });
 
   it('le seuil est paramétrable', async () => {
     const auteur = await contributeur();
     const seuilInitial = await lireSeuil();
-    await admin.from('parametres').update({ valeur: 2 }).eq('cle', 'collectes_max_par_jour');
+    await admin.from('parametres').update({ valeur: 2 }).eq('cle', 'releves_max_par_jour');
     try {
-      await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
-      await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
+      await auteur.client.from('releves').insert(await releve('gari', 'kg'));
+      await auteur.client.from('releves').insert(await releve('gari', 'kg'));
 
-      const troisieme = await auteur.client.from('collectes').insert(await collecte('gari', 'kg'));
+      const troisieme = await auteur.client.from('releves').insert(await releve('gari', 'kg'));
 
       expect(troisieme.error?.code).toBe(LIMITE_QUOTIDIENNE);
     } finally {
-      await admin.from('parametres').update({ valeur: seuilInitial }).eq('cle', 'collectes_max_par_jour');
+      await admin.from('parametres').update({ valeur: seuilInitial }).eq('cle', 'releves_max_par_jour');
     }
   });
 
@@ -293,7 +293,7 @@ describe('limite de fréquence', () => {
     const auteur = await contributeur();
 
     const lecture = await auteur.client.from('parametres').select('*');
-    const modification = await auteur.client.from('parametres').update({ valeur: 1000 }).eq('cle', 'collectes_max_par_jour');
+    const modification = await auteur.client.from('parametres').update({ valeur: 1000 }).eq('cle', 'releves_max_par_jour');
 
     expect(lecture.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
     expect(modification.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
@@ -301,13 +301,13 @@ describe('limite de fréquence', () => {
 });
 
 describe('numéro bloqué', () => {
-  it('un compte marqué bloqué ne peut plus collecter, et peut de nouveau une fois débloqué', async () => {
+  it('un compte marqué bloqué ne peut plus relever, et peut de nouveau une fois débloqué', async () => {
     const auteur = await contributeur();
     await admin.from('profils').update({ est_bloque: true }).eq('id', auteur.id);
 
-    const bloque = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg'));
+    const bloque = await auteur.client.from('releves').insert(await releve('maïs', 'kg'));
     await admin.from('profils').update({ est_bloque: false }).eq('id', auteur.id);
-    const debloque = await auteur.client.from('collectes').insert(await collecte('maïs', 'kg'));
+    const debloque = await auteur.client.from('releves').insert(await releve('maïs', 'kg'));
 
     expect(bloque.error?.code).toBe(COMPTE_BLOQUE);
     expect(debloque.error).toBeNull();
@@ -330,14 +330,14 @@ describe("date d'observation", () => {
     const auteur = await contributeur();
 
     const futur = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { observe_le: new Date(Date.now() + 3_600_000).toISOString() }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { observe_le: new Date(Date.now() + 3_600_000).toISOString() }));
     const ancienne = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { observe_le: ilYaJours(8) }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { observe_le: ilYaJours(8) }));
     const recente = await auteur.client
-      .from('collectes')
-      .insert(await collecte('maïs', 'kg', { observe_le: ilYaJours(3) }));
+      .from('releves')
+      .insert(await releve('maïs', 'kg', { observe_le: ilYaJours(3) }));
 
     expect(futur.error?.code).toBe(DATE_INVALIDE);
     expect(ancienne.error?.code).toBe(DATE_INVALIDE);
@@ -345,16 +345,16 @@ describe("date d'observation", () => {
   });
 });
 
-describe('mes collectes', () => {
-  it('un contributeur voit ses dernières collectes, avec les noms du produit, du marché et de l’unité, et pas celles des autres', async () => {
+describe('mes relevés', () => {
+  it('un contributeur voit ses derniers relevés, avec les noms du produit, du marché et de l’unité, et pas ceux des autres', async () => {
     const auteur = await contributeur();
     const autre = await contributeur();
-    await auteur.client.from('collectes').insert(await collecte('maïs', 'kg', { prix_total: 400 }));
-    await auteur.client.from('collectes').insert(await collecte('riz', 'kg', { prix_total: 700 }));
-    await autre.client.from('collectes').insert(await collecte('gari', 'kg', { prix_total: 500 }));
+    await auteur.client.from('releves').insert(await releve('maïs', 'kg', { prix_total: 400 }));
+    await auteur.client.from('releves').insert(await releve('riz', 'kg', { prix_total: 700 }));
+    await autre.client.from('releves').insert(await releve('gari', 'kg', { prix_total: 500 }));
 
     const { data, error } = await auteur.client
-      .from('collectes')
+      .from('releves')
       .select('prix_total, quantite, observe_le, produits(nom), unites(symbole), marches(nom)')
       .order('observe_le', { ascending: false });
 

@@ -37,9 +37,9 @@ export function formaterAnciennete(dateIso: string): string {
   return `il y a ${Math.floor(jours / 30)} mois`;
 }
 
-export function formaterNombreDeCollectes(nombre: number): string {
-  if (nombre === 0) return 'Aucune collecte sur 7 jours';
-  return `${nombre} collecte${nombre > 1 ? 's' : ''} sur 7 jours`;
+export function formaterNombreDeReleves(nombre: number): string {
+  if (nombre === 0) return 'Aucun relevé sur 7 jours';
+  return `${nombre} relevé${nombre > 1 ? 's' : ''} sur 7 jours`;
 }
 
 /** 2.5 -> « 2,5 » : virgule décimale à la française. */

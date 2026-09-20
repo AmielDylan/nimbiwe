@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
-import { capitaliser, formaterAnciennete, formaterMontant, formaterNombreDeCollectes } from '@/lib/formats';
+import { capitaliser, formaterAnciennete, formaterMontant, formaterNombreDeReleves } from '@/lib/formats';
 import type { PrixCourant } from './use-prix';
 
 export function CartePrix({ prix }: { prix: PrixCourant }) {
@@ -22,10 +22,10 @@ export function CartePrix({ prix }: { prix: PrixCourant }) {
         <Text style={[styles.pasAssez, { color: theme.texteSecondaire }]}>Pas assez de données</Text>
       )}
       <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
-        {formaterNombreDeCollectes(prix.nombre_collectes)}
+        {formaterNombreDeReleves(prix.nombre_releves)}
       </Text>
       <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
-        {`Dernière collecte : ${formaterAnciennete(prix.derniere_collecte_le)}`}
+        {`Dernier relevé : ${formaterAnciennete(prix.dernier_releve_le)}`}
       </Text>
     </View>
   );

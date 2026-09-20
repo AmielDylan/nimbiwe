@@ -10,8 +10,8 @@ export function InviteConnexion() {
 
   return (
     <View style={[styles.conteneur, { backgroundColor: theme.fond }]}>
-      <Text style={[styles.titre, { color: theme.texte }]}>Collecter un prix</Text>
-      <Text style={[styles.texte, { color: theme.texteSecondaire }]}>Connectez-vous pour collecter un prix.</Text>
+      <Text style={[styles.titre, { color: theme.texte }]}>Relever un prix</Text>
+      <Text style={[styles.texte, { color: theme.texteSecondaire }]}>Connectez-vous pour relever un prix.</Text>
       <Bouton libelle="Se connecter" onPress={() => router.navigate('/profil')} />
     </View>
   );

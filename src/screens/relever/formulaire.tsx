@@ -6,15 +6,15 @@ import { Puces } from '@/components/puces';
 import { capitaliser } from '@/lib/formats';
 import { useTheme } from '@/theme';
 
-import { MesCollectes } from './mes-collectes';
-import { useCollecte } from './use-collecte';
-import { useMesCollectes } from './use-mes-collectes';
+import { MesReleves } from './mes-releves';
+import { useReleve } from './use-releve';
+import { useMesReleves } from './use-mes-releves';
 import { type ReferentielPret, useReferentiel } from './use-referentiel';
 
 export function Formulaire() {
   const theme = useTheme();
   const { etat, recharger } = useReferentiel();
-  const mesCollectes = useMesCollectes();
+  const mesReleves = useMesReleves();
 
   if (etat.statut === 'chargement') {
     return (
@@ -34,89 +34,89 @@ export function Formulaire() {
     );
   }
 
-  return <Saisie etat={etat} mesCollectes={mesCollectes} />;
+  return <Saisie etat={etat} mesReleves={mesReleves} />;
 }
 
 function Saisie({
   etat,
-  mesCollectes,
+  mesReleves,
 }: {
   etat: ReferentielPret;
-  mesCollectes: ReturnType<typeof useMesCollectes>;
+  mesReleves: ReturnType<typeof useMesReleves>;
 }) {
   const theme = useTheme();
-  const collecte = useCollecte(etat.produits, mesCollectes.recharger);
+  const releve = useReleve(etat.produits, mesReleves.recharger);
 
   return (
     <ScrollView
       style={{ backgroundColor: theme.fond }}
       contentContainerStyle={styles.contenu}
       keyboardShouldPersistTaps="handled">
-      <Text style={[styles.titre, { color: theme.texte }]}>Collecter un prix</Text>
+      <Text style={[styles.titre, { color: theme.texte }]}>Relever un prix</Text>
 
       <Text style={[styles.etiquette, { color: theme.texte }]}>Produit</Text>
       <Puces
         options={etat.produits.map((p) => ({ id: p.id, libelle: capitaliser(p.nom) }))}
-        selection={collecte.produitId}
-        onChoisir={collecte.choisirProduit}
+        selection={releve.produitId}
+        onChoisir={releve.choisirProduit}
       />
 
       <Text style={[styles.etiquette, { color: theme.texte }]}>Marché</Text>
       <Puces
         options={etat.marches.map((m) => ({ id: m.id, libelle: m.nom }))}
-        selection={collecte.marcheId}
-        onChoisir={collecte.choisirMarche}
+        selection={releve.marcheId}
+        onChoisir={releve.choisirMarche}
       />
 
       <Text style={[styles.etiquette, { color: theme.texte }]}>Unité</Text>
-      {collecte.produitId === null ? (
+      {releve.produitId === null ? (
         <Text style={[styles.texte, { color: theme.texteSecondaire }]}>Choisissez d'abord un produit.</Text>
       ) : (
         <Puces
-          options={collecte.unitesValides.map((u) => ({ id: u.id, libelle: u.symbole }))}
-          selection={collecte.uniteId}
-          onChoisir={collecte.choisirUnite}
+          options={releve.unitesValides.map((u) => ({ id: u.id, libelle: u.symbole }))}
+          selection={releve.uniteId}
+          onChoisir={releve.choisirUnite}
         />
       )}
 
       <ChampTexte
         libelle="Quantité"
         keyboardType="decimal-pad"
-        value={collecte.quantiteSaisie}
-        onChangeText={collecte.saisirQuantite}
+        value={releve.quantiteSaisie}
+        onChangeText={releve.saisirQuantite}
       />
       <ChampTexte
         libelle="Prix total en FCFA"
         keyboardType="number-pad"
         placeholder="450"
-        value={collecte.prixSaisi}
-        onChangeText={collecte.saisirPrix}
+        value={releve.prixSaisi}
+        onChangeText={releve.saisirPrix}
       />
-      <Text style={[styles.texte, { color: collecte.erreurPrix ? theme.erreur : theme.texteSecondaire }]}>
-        {collecte.erreurPrix ?? collecte.libellePrix}
+      <Text style={[styles.texte, { color: releve.erreurPrix ? theme.erreur : theme.texteSecondaire }]}>
+        {releve.erreurPrix ?? releve.libellePrix}
       </Text>
 
-      {collecte.avertissement ? (
+      {releve.avertissement ? (
         <View style={[styles.avertissement, { backgroundColor: theme.carte, borderColor: theme.erreur }]}>
-          <Text style={[styles.texte, { color: theme.texte }]}>{collecte.avertissement}</Text>
-          <Bouton libelle="Confirmer ce prix" onPress={collecte.confirmer} disabled={collecte.envoiEnCours} />
-          <Bouton variante="secondaire" libelle="Corriger" onPress={collecte.corriger} />
+          <Text style={[styles.texte, { color: theme.texte }]}>{releve.avertissement}</Text>
+          <Bouton libelle="Confirmer ce prix" onPress={releve.confirmer} disabled={releve.envoiEnCours} />
+          <Bouton variante="secondaire" libelle="Corriger" onPress={releve.corriger} />
         </View>
       ) : (
         <Bouton
-          libelle="Envoyer la collecte"
-          onPress={collecte.envoyer}
-          disabled={!collecte.saisieValide || collecte.envoiEnCours}
+          libelle="Envoyer le relevé"
+          onPress={releve.envoyer}
+          disabled={!releve.saisieValide || releve.envoiEnCours}
         />
       )}
 
-      {collecte.message && (
-        <Text style={[styles.texte, { color: collecte.message.erreur ? theme.erreur : theme.succes }]}>
-          {collecte.message.texte}
+      {releve.message && (
+        <Text style={[styles.texte, { color: releve.message.erreur ? theme.erreur : theme.succes }]}>
+          {releve.message.texte}
         </Text>
       )}
 
-      <MesCollectes collectes={mesCollectes.collectes} erreur={mesCollectes.erreur} />
+      <MesReleves releves={mesReleves.releves} erreur={mesReleves.erreur} />
     </ScrollView>
   );
 }

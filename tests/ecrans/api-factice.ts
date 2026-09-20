@@ -47,19 +47,19 @@ type OptionsConnexion = {
   verificationEnPanne?: boolean;
   /** Aucun profil n'existe pour ce compte : la modification ne touche aucune ligne. */
   profilIntrouvable?: boolean;
-  /** Collectes déjà envoyées par le contributeur connecté (lignes telles que les renvoie l'API). */
-  mesCollectes?: LigneCollecte[];
-  /** Le serveur refuse toute collecte avec ce code d'erreur (NB001, NB002…). */
-  collecteRefusee?: string;
-  /** Le serveur juge le prix hors bornes, tant que la collecte n'est pas confirmée. */
+  /** Relevés déjà envoyés par le contributeur connecté (lignes telles que les renvoie l'API). */
+  mesReleves?: LigneReleve[];
+  /** Le serveur refuse tout relevé avec ce code d'erreur (NB001, NB002…). */
+  releveRefuse?: string;
+  /** Le serveur juge le prix hors bornes, tant que le relevé n'est pas confirmé. */
   horsBornes?: 'haut' | 'bas';
-  /** L'envoi des collectes échoue à cause du réseau ou du serveur. */
-  collecteEnPanne?: boolean;
-  /** La lecture de la liste de mes collectes échoue. */
-  mesCollectesEnPanne?: boolean;
+  /** L'envoi des relevés échoue à cause du réseau ou du serveur. */
+  releveEnPanne?: boolean;
+  /** La lecture de la liste de mes relevés échoue. */
+  mesRelevesEnPanne?: boolean;
 };
 
-export type LigneCollecte = {
+export type LigneReleve = {
   id: string;
   prix_total: number;
   quantite: number;
@@ -74,10 +74,10 @@ export type Simulation = {
   demandesDeCode: string[];
   nomAffiche: string | null;
   deconnexions: number;
-  /** Corps des collectes reçues et acceptées par le serveur simulé. */
-  collectes: Record<string, unknown>[];
-  /** Nombre de tentatives d'envoi de collecte, acceptées ou non. */
-  envoisDeCollecte: number;
+  /** Corps des relevés reçus et acceptés par le serveur simulé. */
+  releves: Record<string, unknown>[];
+  /** Nombre de tentatives d'envoi de relevé, acceptées ou non. */
+  envoisDeReleve: number;
 };
 
 function jwt(charge: object): string {
@@ -122,10 +122,10 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
     demandesDeCode: [],
     nomAffiche: options.nomAffiche ?? null,
     deconnexions: 0,
-    collectes: [],
-    envoisDeCollecte: 0,
+    releves: [],
+    envoisDeReleve: 0,
   };
-  const mesCollectes = [...(options.mesCollectes ?? [])];
+  const mesReleves = [...(options.mesReleves ?? [])];
 
   fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
     const adresse = chemin(requete);
@@ -156,20 +156,20 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
       return json([{ nom_affiche: simulation.nomAffiche }]);
     }
 
-    if (adresse.endsWith('/rest/v1/collectes')) {
+    if (adresse.endsWith('/rest/v1/releves')) {
       if (init?.method === 'POST') {
-        simulation.envoisDeCollecte += 1;
-        if (options.collecteEnPanne) return json({ message: 'Erreur interne' }, 500);
-        if (options.collecteRefusee) {
-          return json({ code: options.collecteRefusee, message: 'Refusé par le serveur', details: null, hint: null }, 400);
+        simulation.envoisDeReleve += 1;
+        if (options.releveEnPanne) return json({ message: 'Erreur interne' }, 500);
+        if (options.releveRefuse) {
+          return json({ code: options.releveRefuse, message: 'Refusé par le serveur', details: null, hint: null }, 400);
         }
         if (options.horsBornes && corps.hors_bornes_confirme !== true) {
           return json({ code: 'NB003', message: 'Prix hors bornes', details: null, hint: options.horsBornes }, 400);
         }
-        simulation.collectes.push(corps);
+        simulation.releves.push(corps);
         const courantes = typeof donnees === 'function' ? donnees() : donnees;
-        mesCollectes.unshift({
-          id: `collecte-${simulation.collectes.length}`,
+        mesReleves.unshift({
+          id: `releve-${simulation.releves.length}`,
           prix_total: corps.prix_total,
           quantite: corps.quantite,
           observe_le: new Date().toISOString(),
@@ -182,8 +182,8 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
         });
         return new Response(null, { status: 201 });
       }
-      if (options.mesCollectesEnPanne) return json({ message: 'Erreur interne' }, 500);
-      return json(mesCollectes);
+      if (options.mesRelevesEnPanne) return json({ message: 'Erreur interne' }, 500);
+      return json(mesReleves);
     }
 
     const courantes = typeof donnees === 'function' ? donnees() : donnees;
@@ -238,8 +238,8 @@ export function prixCourant(surcharge: Partial<PrixCourant>): PrixCourant {
     marche: 'Ganhi',
     statut: 'publie',
     prix: 425,
-    nombre_collectes: 3,
-    derniere_collecte_le: ilYaJours(2),
+    nombre_releves: 3,
+    dernier_releve_le: ilYaJours(2),
     ...surcharge,
   };
 }

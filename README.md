@@ -28,14 +28,14 @@ La base locale n'envoie aucun SMS réel. Les numéros `22900000101` à `22900000
 
 Le fournisseur SMS est factice en local : copier `supabase/.env.example` vers `supabase/.env` avant `npm run db:start`. Le fournisseur réel se configure sur le projet distant (pilote : Twilio, ouverture publique : BulkGate), ainsi que le délai minimal entre deux codes (`max_frequency`, 1 s en local pour les tests, à mettre à 60 s).
 
-## Garde-fous de la collecte
+## Garde-fous du relevé
 
-Le serveur décide (voir `supabase/migrations/…_collecter_un_prix.sql`) :
+Le serveur décide (voir `supabase/migrations/…_relever_un_prix.sql`) :
 
-- **Bornes plausibles** (`bornes_plausibles`, prix unitaire par produit et unité) : un prix hors bornes est refusé (code `NB003`) tant que le contributeur ne le confirme pas ; la confirmation est enregistrée avec la collecte. Les valeurs actuelles sont des exemples, à fixer avec les relais.
-- **Limite de fréquence** : 5 collectes par jour et par contributeur, produit et marché (code `NB002`), réglable dans la table `parametres` (`collectes_max_par_jour`).
+- **Bornes plausibles** (`bornes_plausibles`, prix unitaire par produit et unité) : un prix hors bornes est refusé (code `NB003`) tant que le contributeur ne le confirme pas ; la confirmation est enregistrée avec le relevé. Les valeurs actuelles sont des exemples, à fixer avec les relais.
+- **Limite de fréquence** : 5 relevés par jour et par contributeur, produit et marché (code `NB002`), réglable dans la table `parametres` (`releves_max_par_jour`).
 - **Compte bloqué** : `profils.est_bloque`, à poser depuis le tableau de bord de la base (code `NB001`).
-- **Date d'observation** : jamais dans le futur, ni plus ancienne que 7 jours (`collecte_anciennete_max_jours`, code `NB004`).
+- **Date d'observation** : jamais dans le futur, ni plus ancienne que 7 jours (`releve_anciennete_max_jours`, code `NB004`).
 
 Ces règles s'appliquent aux contributeurs connectés, pas au tableau de bord ni aux imports. Les tables `parametres` et `bornes_plausibles` ne sont lisibles ni modifiables par le client.
 
@@ -47,7 +47,7 @@ npm run db:reset   # recrée la base : migrations puis données de départ
 npm run db:stop    # arrête la base
 ```
 
-Les migrations sont dans `supabase/migrations/` : elles portent le référentiel réel (marchés, produits, unités) et les règles du serveur, dont le calcul du prix courant (vue `prix_courants`, sur 7 jours). Le fichier `supabase/seed.sql` charge des collectes d'exemple **factices** (comptes « Exemple »), uniquement en local : il ne s'applique jamais en production. Les dates d'exemple sont relatives au moment du reset : relancer `npm run db:reset` pour rafraîchir des prix qui ont plus de 7 jours.
+Les migrations sont dans `supabase/migrations/` : elles portent le référentiel réel (marchés, produits, unités) et les règles du serveur, dont le calcul du prix courant (vue `prix_courants`, sur 7 jours). Le fichier `supabase/seed.sql` charge des relevés d'exemple **factices** (comptes « Exemple »), uniquement en local : il ne s'applique jamais en production. Les dates d'exemple sont relatives au moment du reset : relancer `npm run db:reset` pour rafraîchir des prix qui ont plus de 7 jours.
 
 ## Lancer l'app
 
@@ -74,7 +74,7 @@ Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectP
 ## Structure
 
 - `src/app/` : routes uniquement, sans logique métier
-- `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/`, `collecter/`, `profil/` : accès aux données, logique et composants ensemble)
+- `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/`, `relever/`, `profil/` : accès aux données, logique et composants ensemble)
 - `src/components/` : composants partagés (boutons, champs, puces)
 - `src/lib/` : client Supabase (session conservée dans AsyncStorage), formats français, hook de session
 - `supabase/` : configuration, migrations et données de départ
