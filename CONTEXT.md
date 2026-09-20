@@ -39,8 +39,12 @@ _Avoid_: Unité traditionnelle
 ### Lieux
 
 **Marché**:
-Un lieu physique où les prix sont relevés (Dantokpa, Ganhi, Bohicon, Ouando).
+Un marché de détail, lieu physique où l'acheteur achète et où les prix sont signalés (Ganhi, Ouando, Bohicon…).
 _Avoid_: Point de vente, boutique
+
+**Marché de gros**:
+Un marché réservé aux grossistes (par exemple Tokpa Daho à Akassato). Ses prix ne sont pas ceux payés par l'acheteur ; hors périmètre de la V0.
+_Avoid_: Marché (sans précision)
 
 ### Personnes
 
