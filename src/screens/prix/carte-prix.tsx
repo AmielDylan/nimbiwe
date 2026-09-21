@@ -1,15 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
 import { capitaliser, formaterAnciennete, formaterMontant, formaterNombreDeReleves } from '@/lib/formats';
 import type { PrixCourant } from './use-prix';
 
-export function CartePrix({ prix }: { prix: PrixCourant }) {
+export function CartePrix({ prix, onOuvrir }: { prix: PrixCourant; onOuvrir?: (prix: PrixCourant) => void }) {
   const theme = useTheme();
 
   return (
-    <View testID="carte-prix" style={[styles.carte, { backgroundColor: theme.carte }]}>
+    <Pressable
+      testID="carte-prix"
+      accessibilityRole={onOuvrir ? 'button' : undefined}
+      accessibilityLabel={onOuvrir ? `Voir les relevés récents de ${prix.produit} à ${prix.marche}` : undefined}
+      onPress={onOuvrir ? () => onOuvrir(prix) : undefined}
+      style={[styles.carte, { backgroundColor: theme.carte }]}>
       <View style={styles.entete}>
         <Text style={[styles.produit, { color: theme.texte }]}>{capitaliser(prix.produit)}</Text>
         <Text style={[styles.detail, { color: theme.texteSecondaire }]}>{prix.marche}</Text>
@@ -27,7 +32,7 @@ export function CartePrix({ prix }: { prix: PrixCourant }) {
       <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
         {`Dernier relevé : ${formaterAnciennete(prix.dernier_releve_le)}`}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

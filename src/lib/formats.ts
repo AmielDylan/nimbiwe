@@ -46,3 +46,8 @@ export function formaterNombreDeReleves(nombre: number): string {
 export function formaterQuantite(quantite: number): string {
   return String(quantite).replace('.', ',');
 }
+
+/** « 0 confirmation », « 1 confirmation », « 2 confirmations » : le français met le singulier à 0 et 1. */
+export function formaterCompteur(nombre: number, nom: string): string {
+  return `${nombre} ${nom}${nombre > 1 ? 's' : ''}`;
+}

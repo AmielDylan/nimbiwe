@@ -5,9 +5,15 @@ import { useTheme } from '@/theme';
 
 import { CartePrix } from './carte-prix';
 import { capitaliser } from '@/lib/formats';
-import { usePrix } from './use-prix';
+import { type PrixCourant, usePrix } from './use-prix';
 
-export function Prix({ retours = 0 }: { retours?: number }) {
+type Props = {
+  retours?: number;
+  /** Ouvre le détail d'un prix (la route s'en charge : l'écran ne sait pas naviguer). */
+  onOuvrirDetail?: (prix: PrixCourant) => void;
+};
+
+export function Prix({ retours = 0, onOuvrirDetail }: Props) {
   const theme = useTheme();
   const {
     etat,
@@ -29,7 +35,7 @@ export function Prix({ retours = 0 }: { retours?: number }) {
       contentContainerStyle={styles.contenu}
       data={prixAffiches}
       keyExtractor={(p) => `${p.marche_id}-${p.produit_id}-${p.unite_id}`}
-      renderItem={({ item }) => <CartePrix prix={item} />}
+      renderItem={({ item }) => <CartePrix prix={item} onOuvrir={onOuvrirDetail} />}
       refreshControl={<RefreshControl refreshing={actualisation} onRefresh={actualiser} />}
       ListHeaderComponent={
         etat.statut === 'pret' ? (
