@@ -306,6 +306,8 @@ export function prixCourant(surcharge: Partial<PrixCourant>): PrixCourant {
     prix: 425,
     nombre_releves: 3,
     dernier_releve_le: ilYaJours(2),
+    prix_converti: null,
+    unite_convertie: null,
     ...surcharge,
   };
 }

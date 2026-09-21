@@ -72,6 +72,54 @@ describe('écran Prix', () => {
     expect(screen.getByText('Dernier relevé : à l’instant')).toBeOnTheScreen();
   });
 
+  it("affiche aussi le prix en unité standard quand un facteur de conversion est connu", async () => {
+    simulerApi({
+      ...donnees,
+      prix_courants: [prixCourant({ unite: 'bol', prix: 1000, prix_converti: 400, unite_convertie: 'kg' })],
+    });
+
+    render(<Prix />);
+
+    const carte = within(await screen.findByTestId('carte-prix'));
+    expect(carte.getByText('1 000 FCFA / bol')).toBeOnTheScreen();
+    expect(carte.getByText('soit 400 FCFA / kg')).toBeOnTheScreen();
+  });
+
+  it("arrondit le prix converti, sans jamais le confondre avec le prix d'origine", async () => {
+    simulerApi({
+      ...donnees,
+      prix_courants: [prixCourant({ unite: 'bol', prix: 1000, prix_converti: 333.333, unite_convertie: 'kg' })],
+    });
+
+    render(<Prix />);
+
+    expect(await screen.findByText('1 000 FCFA / bol')).toBeOnTheScreen();
+    expect(screen.getByText('soit 333 FCFA / kg')).toBeOnTheScreen();
+  });
+
+  it("sans facteur de conversion, le prix reste dans son unité d'origine, sans équivalent", async () => {
+    simulerApi({ ...donnees, prix_courants: [prixCourant({ unite: 'bol', prix: 1000 })] });
+
+    render(<Prix />);
+
+    const carte = within(await screen.findByTestId('carte-prix'));
+    expect(carte.getByText('1 000 FCFA / bol')).toBeOnTheScreen();
+    expect(carte.queryByText(/soit/)).not.toBeOnTheScreen();
+  });
+
+  it("n'affiche aucun équivalent quand le prix n'est pas publié", async () => {
+    simulerApi({
+      ...donnees,
+      prix_courants: [prixCourant({ unite: 'bol', statut: 'pas_assez_de_donnees', prix: null, unite_convertie: 'kg' })],
+    });
+
+    render(<Prix />);
+
+    const carte = within(await screen.findByTestId('carte-prix'));
+    expect(carte.getByText('Pas assez de données')).toBeOnTheScreen();
+    expect(carte.queryByText(/soit/)).not.toBeOnTheScreen();
+  });
+
   it('dit « pas assez de données » avec la date du dernier relevé, sans afficher de prix', async () => {
     simulerApi({ ...donnees, prix_courants: [ouandoSucreInsuffisant] });
 

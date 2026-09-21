@@ -20,9 +20,16 @@ export function CartePrix({ prix, onOuvrir }: { prix: PrixCourant; onOuvrir?: (p
         <Text style={[styles.detail, { color: theme.texteSecondaire }]}>{prix.marche}</Text>
       </View>
       {prix.statut === 'publie' && prix.prix !== null ? (
-        <Text style={[styles.prix, { color: theme.texte }]}>
-          {`${formaterMontant(prix.prix)} FCFA / ${prix.unite}`}
-        </Text>
+        <>
+          <Text style={[styles.prix, { color: theme.texte }]}>
+            {`${formaterMontant(prix.prix)} FCFA / ${prix.unite}`}
+          </Text>
+          {prix.prix_converti !== null && prix.unite_convertie !== null && (
+            <Text style={[styles.detail, { color: theme.texteSecondaire }]}>
+              {`soit ${formaterMontant(prix.prix_converti)} FCFA / ${prix.unite_convertie}`}
+            </Text>
+          )}
+        </>
       ) : (
         <Text style={[styles.pasAssez, { color: theme.texteSecondaire }]}>Pas assez de données</Text>
       )}
