@@ -30,7 +30,7 @@ describe('référentiel', () => {
     );
   });
 
-  it('un lecteur anonyme voit les trois unités standard', async () => {
+  it('un lecteur anonyme voit les trois unités standard et le bol, mesure locale', async () => {
     const { data, error } = await lecteurAnonyme.from('unites').select('symbole, type').order('symbole');
 
     expect(error).toBeNull();
@@ -39,9 +39,10 @@ describe('référentiel', () => {
         { symbole: 'kg', type: 'standard' },
         { symbole: 'L', type: 'standard' },
         { symbole: 'pièce', type: 'standard' },
+        { symbole: 'bol', type: 'locale' },
       ]),
     );
-    expect(data).toHaveLength(3);
+    expect(data).toHaveLength(4);
   });
 
   it("chaque produit n'est proposé que dans ses unités valides", async () => {
@@ -55,7 +56,7 @@ describe('référentiel', () => {
       (data ?? []).map((produit) => [produit.nom, produit.unites.map((u) => u.symbole).sort()]),
     );
     expect(parProduit).toEqual({
-      maïs: ['kg'],
+      maïs: ['bol', 'kg'],
       igname: ['kg', 'pièce'],
       'huile végétale': ['L'],
       œufs: ['pièce'],
