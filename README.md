@@ -39,6 +39,9 @@ Le serveur décide (voir `supabase/migrations/…_relever_un_prix.sql`) :
 - **Compte bloqué** : `profils.est_bloque`, à poser depuis le tableau de bord de la base (code `NB001`).
 - **Date d'observation** : jamais dans le futur, ni plus ancienne que 7 jours (`releve_anciennete_max_jours`, code `NB004`).
 
+- **Position facultative** : le contributeur peut joindre sa position (interrupteur « Partager ma position », autorisation du téléphone demandée à l'activation, position lue à l'envoi). Elle est stockée côté serveur uniquement : aucune colonne de position (`latitude`, `longitude`, `distance_marche_m`) n'est lisible par l'API, même par son auteur. Le serveur calcule la distance au marché (les coordonnées des marchés de `marches` sont **approximatives**, à corriger sur place). Un refus ou une position introuvable ne bloque jamais le relevé.
+- **Poids dans le prix courant** : la médiane du prix courant est pondérée. Un relevé avec position pèse 1, un relevé sans position pèse `poids_releve_sans_position` (0,5 par défaut, minimum 0,01, réglable dans la table `parametres`). Avec des poids égaux, le résultat est la médiane ordinaire.
+
 Ces règles s'appliquent aux contributeurs connectés, pas au tableau de bord ni aux imports. Les tables `parametres` et `bornes_plausibles` ne sont lisibles ni modifiables par le client.
 
 ## Base de données locale

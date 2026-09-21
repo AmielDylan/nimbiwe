@@ -24,17 +24,18 @@ export function ilYaJours(jours: number): string {
   return new Date(Date.now() - jours * JOUR).toISOString();
 }
 
-type Releve = { prix: number; joursPasses?: number; quantite?: number };
+type Position = { latitude: number; longitude: number };
+type Releve = { prix: number; joursPasses?: number; quantite?: number; position?: Position };
 
 /**
  * Un marché jetable avec ses contributeurs : chaque test travaille sur son
  * propre marché, pour rester indépendant des données d'exemple et des autres
  * tests exécutés en parallèle.
  */
-export async function creerScenario() {
+export async function creerScenario(coordonnees?: Position) {
   const { data, error } = await admin
     .from('marches')
-    .insert({ nom: `Marché de test ${crypto.randomUUID()}` })
+    .insert({ nom: `Marché de test ${crypto.randomUUID()}`, ...coordonnees })
     .select('id')
     .single();
   if (error || !data) throw error ?? new Error('Marché de test non créé');
@@ -69,7 +70,7 @@ export async function creerScenario() {
     contributeurId: string,
     produit: string,
     unite: string,
-    { prix, joursPasses = 0, quantite = 1 }: Releve,
+    { prix, joursPasses = 0, quantite = 1, position }: Releve,
   ) {
     const { error: erreur } = await admin.from('releves').insert({
       marche_id: marche.id,
@@ -79,6 +80,7 @@ export async function creerScenario() {
       prix_total: prix,
       quantite,
       observe_le: ilYaJours(joursPasses),
+      ...position,
     });
     if (erreur) throw erreur;
   }
