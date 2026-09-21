@@ -1,4 +1,4 @@
-import { admin, contributeurConnecte, creerScenario, identifiants, lecteurAnonyme } from './aide';
+import { admin, contributeurConnecte, creerScenario, identifiants, ilYaJours, lecteurAnonyme } from './aide';
 
 const REFUSE_PAR_LA_SECURITE = '42501';
 const COMPTE_BLOQUE = 'NB001';
@@ -68,7 +68,7 @@ async function liste(client = lecteurAnonyme) {
 async function prixCourant() {
   const { data } = await lecteurAnonyme
     .from('prix_courants')
-    .select('prix, statut, nombre_releves')
+    .select('prix, statut, nombre_releves, dernier_releve_le')
     .eq('marche_id', scenario.marcheId)
     .eq('produit', 'maïs')
     .single();
@@ -140,6 +140,19 @@ describe('confirmer et contester', () => {
     const { error } = await reagir(a, releveId, 'confirmation');
 
     expect(error?.code).toBe(COMPTE_BLOQUE);
+  });
+
+  it('un compte bloqué ne peut pas non plus changer une réaction déjà posée', async () => {
+    const releveId = await nouveauReleve();
+    const [a] = await lecteurs(1);
+    await reagir(a, releveId, 'confirmation');
+    await admin.from('profils').update({ est_bloque: true }).eq('id', a.id);
+
+    const { error } = await a.client.from('reactions').update({ type: 'contestation' }).eq('releve_id', releveId);
+
+    expect(error?.code).toBe(COMPTE_BLOQUE);
+    const { data } = await admin.from('reactions').select('type').eq('releve_id', releveId);
+    expect(data).toEqual([{ type: 'confirmation' }]);
   });
 
   it("le client n'écrit que les champs autorisés", async () => {
@@ -281,6 +294,55 @@ describe('seuil de contestation', () => {
     await contestants[0].client.from('reactions').delete().eq('releve_id', discute);
 
     expect((await prixCourant()).prix).toBe(475);
+  });
+
+  it('changer une confirmation en contestation fait sortir le relevé du prix, et inversement', async () => {
+    const discute = await relevesEtUnRelevediscute();
+    const gens = await reactions(discute, 2, 1); // 2 contestations, 1 confirmation : reste dans le prix
+    expect((await prixCourant()).prix).toBe(475);
+
+    await gens[2].client.from('reactions').update({ type: 'contestation' }).eq('releve_id', discute);
+    expect((await prixCourant()).prix).toBe(470); // 3 contre 0
+
+    await gens[0].client.from('reactions').update({ type: 'confirmation' }).eq('releve_id', discute);
+    expect((await prixCourant()).prix).toBe(475); // 2 contre 1
+  });
+
+  it('un relevé contesté ne fixe pas la date de fraîcheur du prix', async () => {
+    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 450, joursPasses: 3 });
+    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 470, joursPasses: 2 });
+    const discute = await nouveauReleve(700); // le plus récent
+    await reactions(discute, 3);
+
+    const prix = await prixCourant();
+
+    expect(new Date(prix.dernier_releve_le).getTime()).toBeCloseTo(new Date(ilYaJours(2)).getTime(), -4);
+  });
+
+  it("un contributeur dont le dernier relevé est contesté ne compte plus : son relevé précédent ne revient pas", async () => {
+    // Seul le dernier relevé de chaque contributeur compte (voir les relevés aberrants) ;
+    // s'il est écarté, le contributeur sort du calcul plutôt que de resservir un vieux prix.
+    const a = await scenario.contributeur();
+    await scenario.relever(a, 'maïs', 'kg', { prix: 300, joursPasses: 2 });
+    for (const prix of [450, 470]) await nouveauReleve(prix);
+    const dernierDeA = await releveDe(a, 700);
+    expect((await prixCourant()).statut).toBe('publie');
+
+    await reactions(dernierDeA, 3);
+
+    expect((await prixCourant()).statut).toBe('pas_assez_de_donnees');
+  });
+
+  it('le seuil est lu dans les paramètres : à 2, deux contestations suffisent', async () => {
+    const discute = await relevesEtUnRelevediscute();
+    await admin.from('parametres').update({ valeur: 2 }).eq('cle', 'contestations_min_pour_exclure');
+    try {
+      await reactions(discute, 2);
+
+      expect((await prixCourant()).prix).toBe(470);
+    } finally {
+      await admin.from('parametres').update({ valeur: 3 }).eq('cle', 'contestations_min_pour_exclure');
+    }
   });
 
   it('un relevé contesté ne compte plus pour la publication', async () => {

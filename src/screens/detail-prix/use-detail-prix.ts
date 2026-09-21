@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
+export type Reaction = 'confirmation' | 'contestation';
+
 export type ReleveRecent = {
   id: string;
   prix_total: number;
@@ -12,22 +14,23 @@ export type ReleveRecent = {
   confirmations: number;
   contestations: number;
   conteste: boolean;
-  ma_reaction: 'confirmation' | 'contestation' | null;
+  ma_reaction: Reaction | null;
   est_le_mien: boolean;
 };
-
-export type Reaction = 'confirmation' | 'contestation';
 
 type Etat = { statut: 'chargement' } | { statut: 'erreur' } | { statut: 'pret'; releves: ReleveRecent[] };
 
 // Codes de refus renvoyés par la base (voir la migration « reactions »).
 const COMPTE_BLOQUE = 'NB001';
 const RELEVE_DE_SOI = 'NB005';
+const SESSION_REFUSEE = '42501'; // le serveur ne reconnaît plus la session
 
 function messageDeRefus(code: string | undefined): string {
   switch (code) {
     case RELEVE_DE_SOI:
       return 'Vous ne pouvez pas réagir à votre propre relevé.';
+    case SESSION_REFUSEE:
+      return 'Votre session a expiré. Reconnectez-vous pour réagir à un relevé.';
     case COMPTE_BLOQUE:
       return "Votre compte ne peut plus réagir aux relevés. Contactez l'équipe Nimbiwe.";
     default:

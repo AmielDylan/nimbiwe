@@ -68,6 +68,9 @@ _Avoid_: Enquêteur, agent, modérateur
 Tout utilisateur connecté qui relève un prix. Un relais est un contributeur de confiance.
 _Avoid_: Utilisateur (trop large : il inclut les simples lecteurs), membre
 
+**Réaction**:
+Confirmation ou contestation d'un contributeur connecté sur le relevé d'un autre.
+
 **Confirmation**:
 La réaction d'un contributeur connecté qui valide le relevé d'un autre. Une seule réaction par personne et par relevé, modifiable ou retirable ; jamais sur son propre relevé.
 _Avoid_: Vote positif, like

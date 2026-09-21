@@ -177,6 +177,16 @@ describe('réagir', () => {
     expect(await screen.findByText('Vous ne pouvez pas réagir à votre propre relevé.')).toBeOnTheScreen();
   });
 
+  it("invite à se reconnecter quand le serveur ne reconnaît plus la session", async () => {
+    simulerApi(donnees, { reactionRefusee: '42501' });
+    await ouvrirLeDetail();
+    await screen.findByText('Adjovi');
+
+    fireEvent.press(carte('r1').getByRole('button', { name: 'Confirmer' }));
+
+    expect(await screen.findByText('Votre session a expiré. Reconnectez-vous pour réagir à un relevé.')).toBeOnTheScreen();
+  });
+
   it("dit clairement quand la réaction n'a pas pu être enregistrée", async () => {
     simulerApi(donnees, { reactionRefusee: 'PGRST000' });
     await ouvrirLeDetail();

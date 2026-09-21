@@ -54,6 +54,10 @@ begin
   if exists (select 1 from public.profils where id = new.contributeur_id and est_bloque) then
     raise exception 'Ce compte ne peut plus réagir' using errcode = 'NB001';
   end if;
+  -- Changer sa réaction est aussi une réaction : un compte bloqué ne peut pas non plus la modifier.
+  if tg_op = 'UPDATE' then
+    return new;
+  end if;
   if exists (select 1 from public.releves where id = new.releve_id and contributeur_id = new.contributeur_id) then
     raise exception 'On ne réagit pas à son propre relevé' using errcode = 'NB005';
   end if;
@@ -63,8 +67,8 @@ $$;
 
 revoke execute on function public.verifier_reaction() from public, anon, authenticated;
 
-create trigger verifier_reaction_avant_insertion
-  before insert on public.reactions
+create trigger verifier_reaction_avant_ecriture
+  before insert or update on public.reactions
   for each row execute function public.verifier_reaction();
 
 insert into public.parametres (cle, valeur, description) values
@@ -192,8 +196,8 @@ with agregats as (
       array_agg(prix_unitaire::double precision order by prix_unitaire, id) filter (where retenu and not aberrant),
       array_agg(poids order by prix_unitaire, id) filter (where retenu and not aberrant)
     ) as mediane,
-    -- Un relevé écarté ne fixe pas la date de fraîcheur du prix.
-    coalesce(max(observe_le) filter (where not coalesce(aberrant, false)), max(observe_le)) as dernier_releve_le
+    -- Un relevé écarté (aberrant ou contesté) ne fixe pas la date de fraîcheur du prix.
+    coalesce(max(observe_le) filter (where not coalesce(aberrant, false) and not conteste), max(observe_le)) as dernier_releve_le
   from public.releves_evalues
   group by produit_id, unite_id, marche_id
 )
