@@ -14,6 +14,10 @@ _Avoid_: Signalement, signaler (évoquent une alerte ou un bug), collecte, colle
 La médiane pondérée des relevés des 7 derniers jours d'un même produit, sur un même marché, dans une même unité. Chaque relevé compte selon son **poids** ; à poids égaux, c'est la médiane ordinaire.
 _Avoid_: Prix du jour, prix moyen, cours
 
+**Relevé aberrant**:
+Un relevé dont le prix unitaire s'écarte de la médiane de référence (même marché, produit et unité, 7 derniers jours) d'un facteur supérieur à 3, dans un sens ou dans l'autre (réglable). Il est écarté du prix courant, sans jamais être supprimé : il reste consultable pour revue. Seul le dernier relevé récent de chaque contributeur compte ; aucun relevé n'est jugé sous 3 contributeurs, et le relevé du relais du marché n'est jamais écarté.
+_Avoid_: Erreur, faux prix, prix rejeté
+
 **Poids**:
 L'importance d'un relevé dans le prix courant. Un relevé pèse 1 quand sa **position** est vérifiée, moins sinon (0,5 par défaut) ; le relevé d'un **relais** sur son marché pèse en plus 3 fois davantage (facteur réglable).
 _Avoid_: Note, score, fiabilité
