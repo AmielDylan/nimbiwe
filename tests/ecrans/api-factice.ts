@@ -7,7 +7,26 @@ import type { PrixCourant, Reference } from '@/screens/prix/use-prix';
 export type Marche = Reference;
 export type Produit = Reference & { unites?: { id: number; symbole: string }[] };
 export type { PrixCourant };
-export type Donnees = { marches: Marche[]; produits: Produit[]; prix_courants: PrixCourant[] };
+/** Un relevé récent tel que le renvoie `releves_recents`, SANS la réaction du connecté (le faux serveur l'ajoute). */
+export type ReleveRecent = {
+  id: string;
+  prix_total: number;
+  quantite: number;
+  prix_unitaire: number;
+  observe_le: string;
+  auteur: string;
+  confirmations: number;
+  contestations: number;
+  conteste: boolean;
+  est_le_mien: boolean;
+};
+
+export type Donnees = {
+  marches: Marche[];
+  produits: Produit[];
+  prix_courants: PrixCourant[];
+  releves_recents?: ReleveRecent[];
+};
 
 const JOUR = 24 * 60 * 60 * 1000;
 
@@ -51,6 +70,12 @@ type OptionsConnexion = {
   compteSupprime?: boolean;
   /** Relevés déjà envoyés par le contributeur connecté (lignes telles que les renvoie l'API). */
   mesReleves?: LigneReleve[];
+  /** Réactions déjà données par le connecté : identifiant du relevé -> type. */
+  mesReactions?: Record<string, 'confirmation' | 'contestation'>;
+  /** Le serveur refuse toute réaction avec ce code d'erreur (NB005…). */
+  reactionRefusee?: string;
+  /** La lecture des relevés récents échoue. */
+  relevesRecentsEnPanne?: boolean;
   /** Le serveur refuse tout relevé avec ce code d'erreur (NB001, NB002…). */
   releveRefuse?: string;
   /** Le serveur juge le prix hors bornes, tant que le relevé n'est pas confirmé. */
@@ -80,6 +105,8 @@ export type Simulation = {
   releves: Record<string, unknown>[];
   /** Nombre de tentatives d'envoi de relevé, acceptées ou non. */
   envoisDeReleve: number;
+  /** Réactions reçues par le serveur simulé, dans l'ordre. */
+  reactions: { methode: string; releve_id: string; type?: string }[];
 };
 
 function jwt(charge: object): string {
@@ -126,8 +153,10 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
     deconnexions: 0,
     releves: [],
     envoisDeReleve: 0,
+    reactions: [],
   };
   const mesReleves = [...(options.mesReleves ?? [])];
+  const mesReactions: Record<string, 'confirmation' | 'contestation'> = { ...options.mesReactions };
 
   fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
     const adresse = chemin(requete);
@@ -167,6 +196,32 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
       return json([{ nom_affiche: simulation.nomAffiche }]);
     }
 
+    if (adresse.endsWith('/rest/v1/reactions')) {
+      const methode = init?.method ?? 'GET';
+      const identifiant = methode === 'POST' ? corps.releve_id : new URL(String(requete)).searchParams.get('releve_id')?.replace('eq.', '');
+      simulation.reactions.push({ methode, releve_id: identifiant, type: corps.type });
+      if (options.reactionRefusee) {
+        return json({ code: options.reactionRefusee, message: 'Refusé par le serveur', details: null, hint: null }, 400);
+      }
+      if (methode === 'DELETE') delete mesReactions[identifiant];
+      else mesReactions[identifiant] = corps.type;
+      return new Response(null, { status: methode === 'POST' ? 201 : 204 });
+    }
+    if (adresse.endsWith('/rest/v1/rpc/releves_recents')) {
+      if (options.relevesRecentsEnPanne) return json({ message: 'Erreur interne' }, 500);
+      const courantes = typeof donnees === 'function' ? donnees() : donnees;
+      return json(
+        (courantes.releves_recents ?? []).map((releve) => {
+          const mienne = mesReactions[releve.id] ?? null;
+          return {
+            ...releve,
+            confirmations: releve.confirmations + (mienne === 'confirmation' ? 1 : 0),
+            contestations: releve.contestations + (mienne === 'contestation' ? 1 : 0),
+            ma_reaction: mienne,
+          };
+        }),
+      );
+    }
     if (adresse.endsWith('/rest/v1/releves')) {
       if (init?.method === 'POST') {
         simulation.envoisDeReleve += 1;

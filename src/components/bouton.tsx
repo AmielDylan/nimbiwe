@@ -7,16 +7,18 @@ type Props = {
   onPress: () => void;
   disabled?: boolean;
   variante?: 'principal' | 'secondaire';
+  /** État « choisi » d'un bouton à bascule (lu par les lecteurs d'écran). */
+  selectionne?: boolean;
 };
 
-export function Bouton({ libelle, onPress, disabled = false, variante = 'principal' }: Props) {
+export function Bouton({ libelle, onPress, disabled = false, variante = 'principal', selectionne }: Props) {
   const theme = useTheme();
   const principal = variante === 'principal';
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, selected: selectionne }}
       disabled={disabled}
       onPress={onPress}
       style={[

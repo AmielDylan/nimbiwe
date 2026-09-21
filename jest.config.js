@@ -6,6 +6,9 @@ const transformIgnorePatterns = require('jest-expo/jest-preset').transformIgnore
 
 /** @type {import('jest').Config} */
 module.exports = {
+  // Les tests de l'API font de vrais appels à une vraie base : de la marge quand la machine est chargée.
+  // (Option globale : Jest l'ignore dans un projet.)
+  testTimeout: 30_000,
   projects: [
     {
       // Vrai client, vraie base locale : pas de preset jest-expo, qui
