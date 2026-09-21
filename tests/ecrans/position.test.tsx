@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 import { simulerPosition } from './position-factice';
 import { CLE_DE_SESSION, marches, prixCourant, produits, sessionDeTest, simulerApi } from './api-factice';
@@ -16,8 +16,12 @@ async function ouvrirLeFormulaire() {
   await screen.findByRole('button', { name: 'Maïs' });
 }
 
+function interrupteur() {
+  return screen.getByRole('switch', { name: 'Partager ma position' });
+}
+
 function partagerLaPosition(actif: boolean) {
-  fireEvent(screen.getByRole('switch', { name: 'Partager ma position' }), 'valueChange', actif);
+  fireEvent(interrupteur(), 'valueChange', actif);
 }
 
 async function remplirEtEnvoyer() {
@@ -59,7 +63,7 @@ describe('position facultative', () => {
     await ouvrirLeFormulaire();
 
     partagerLaPosition(true);
-    await screen.findByRole('switch', { name: 'Partager ma position' });
+    await waitFor(() => expect(interrupteur()).toBeChecked());
     await remplirEtEnvoyer();
 
     expect(await screen.findByText('Merci ! Votre relevé est enregistré.')).toBeOnTheScreen();
@@ -93,7 +97,7 @@ describe('position facultative', () => {
     const api = simulerApi(donnees);
     await ouvrirLeFormulaire();
     partagerLaPosition(true);
-    await screen.findByRole('switch', { name: 'Partager ma position' });
+    await waitFor(() => expect(interrupteur()).toBeChecked());
 
     await remplirEtEnvoyer();
 
@@ -108,7 +112,7 @@ describe('position facultative', () => {
     const api = simulerApi(donnees);
     await ouvrirLeFormulaire();
     partagerLaPosition(true);
-    await screen.findByRole('switch', { name: 'Partager ma position' });
+    await waitFor(() => expect(interrupteur()).toBeChecked());
 
     partagerLaPosition(false);
     await remplirEtEnvoyer();
@@ -116,5 +120,59 @@ describe('position facultative', () => {
     await screen.findByText('Merci ! Votre relevé est enregistré.');
     expect(lirePosition).not.toHaveBeenCalled();
     expect(api.releves[0]).not.toHaveProperty('latitude');
+  });
+
+  it("n'envoie aucune position si le contributeur désactive le partage avant que le téléphone ait répondu à la demande", async () => {
+    const { accorderAutorisation } = simulerPosition({ autorisation: 'en_attente' });
+    const api = simulerApi(donnees);
+    await ouvrirLeFormulaire();
+
+    partagerLaPosition(true); // la fenêtre d'autorisation est encore ouverte
+    partagerLaPosition(false);
+    await act(async () => accorderAutorisation()); // la réponse arrive après coup
+    await remplirEtEnvoyer();
+
+    await screen.findByText('Merci ! Votre relevé est enregistré.');
+    expect(interrupteur()).not.toBeChecked();
+    expect(api.releves[0]).not.toHaveProperty('latitude');
+  });
+
+  it("fige l'interrupteur pendant l'envoi : le contributeur ne peut pas retirer son partage à mi-chemin", async () => {
+    const { fournirPosition } = simulerPosition({ position: 'en_attente' });
+    const api = simulerApi(donnees);
+    await ouvrirLeFormulaire();
+    partagerLaPosition(true);
+    await waitFor(() => expect(interrupteur()).toBeChecked());
+
+    await remplirEtEnvoyer(); // la lecture de la position est en cours
+
+    await waitFor(() => expect(interrupteur().props.disabled).toBe(true));
+    await act(async () => fournirPosition({ latitude: 6.37, longitude: 2.43 }));
+    await screen.findByText('Merci ! Votre relevé est enregistré.');
+    expect(api.releves[0]).toMatchObject({ latitude: 6.37, longitude: 2.43 });
+    expect(interrupteur().props.disabled).toBeFalsy();
+  });
+
+  it('renonce à la position au bout de 8 secondes et envoie quand même le relevé', async () => {
+    jest.useFakeTimers();
+    try {
+      simulerPosition({ position: 'en_attente' }); // le téléphone ne répond jamais
+      const api = simulerApi(donnees);
+      await ouvrirLeFormulaire();
+      partagerLaPosition(true);
+      await waitFor(() => expect(interrupteur()).toBeChecked());
+      await remplirEtEnvoyer();
+
+      await act(async () => {
+        jest.advanceTimersByTime(8000);
+      });
+
+      expect(
+        await screen.findByText('Merci ! Votre relevé est enregistré, sans position (position indisponible).'),
+      ).toBeOnTheScreen();
+      expect(api.releves[0]).not.toHaveProperty('latitude');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

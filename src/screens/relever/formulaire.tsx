@@ -100,8 +100,10 @@ function Saisie({
         <Text style={[styles.etiquette, styles.libellePosition, { color: theme.texte }]}>Partager ma position</Text>
         <Switch
           accessibilityLabel="Partager ma position"
-          value={releve.partagePosition}
-          onValueChange={releve.changerLePartagePosition}
+          value={releve.position.partage}
+          onValueChange={releve.position.changerLePartage}
+          // Figé pendant l'envoi : le résultat se rapporte à ce que le contributeur avait choisi.
+          disabled={releve.envoiEnCours}
           trackColor={{ true: theme.accent }}
         />
       </View>
@@ -109,8 +111,8 @@ function Saisie({
         Facultatif. Votre position n’est jamais montrée aux autres. Elle sert seulement à vérifier que votre relevé
         vient bien du marché : un relevé avec position pèse davantage dans le prix courant.
       </Text>
-      {releve.informationPosition && (
-        <Text style={[styles.texte, { color: theme.texteSecondaire }]}>{releve.informationPosition}</Text>
+      {releve.position.information && (
+        <Text style={[styles.texte, { color: theme.texteSecondaire }]}>{releve.position.information}</Text>
       )}
 
       {releve.avertissement ? (

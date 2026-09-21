@@ -104,7 +104,7 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     setEnvoiEnCours(true);
     setMessage(null);
     // La position est lue à l'envoi ; sans elle, le relevé part quand même.
-    const coordonnees = await position.lirePosition();
+    const lecture = await position.lirePosition();
     // Le client n'envoie que les champs autorisés ; le reste est décidé par le serveur.
     const { error } = await supabase.from('releves').insert({
       produit_id: produit.id,
@@ -112,7 +112,7 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
       marche_id: marcheId,
       quantite,
       prix_total: prix,
-      ...(coordonnees ?? {}),
+      ...(lecture.position ?? {}),
       ...(confirme ? { hors_bornes_confirme: true } : {}),
     });
     envoiVerrou.current = false;
@@ -121,9 +121,8 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     if (!error) {
       setHorsBornes(null);
       setPrixSaisi('');
-      const sansPositionMalgreLePartage = position.partage && coordonnees === null;
       setMessage({
-        texte: sansPositionMalgreLePartage
+        texte: lecture.demandee && lecture.position === null
           ? 'Merci ! Votre relevé est enregistré, sans position (position indisponible).'
           : 'Merci ! Votre relevé est enregistré.',
         erreur: false,
@@ -164,9 +163,7 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     // La confirmation n'a de sens que face à l'avertissement affiché.
     confirmer: () => horsBornes !== null && envoyer(true),
     erreurPrix,
-    partagePosition: position.partage,
-    informationPosition: position.information,
-    changerLePartagePosition: position.changerLePartage,
+    position: { partage: position.partage, information: position.information, changerLePartage: position.changerLePartage },
     corriger: () => setHorsBornes(null),
   };
 }

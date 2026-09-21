@@ -55,6 +55,7 @@ as $$
   )))
 $$;
 
+-- `security definer` : le trigger appelle distance_metres, fermée à l'API.
 create function public.calculer_distance_releve()
 returns trigger
 language plpgsql
@@ -77,6 +78,9 @@ end;
 $$;
 
 revoke execute on function public.calculer_distance_releve() from public, anon, authenticated;
+-- Fonction pure utilisée par le seul trigger : inutile pour l'API, donc fermée.
+revoke execute on function public.distance_metres(double precision, double precision, double precision, double precision)
+  from public, anon, authenticated;
 
 create trigger calculer_distance_avant_insertion
   before insert on public.releves
@@ -95,16 +99,21 @@ grant insert (latitude, longitude) on public.releves to authenticated;
 -- position pèse 1. Réglable depuis le tableau de bord ; minimum appliqué : 0,01.
 insert into public.parametres (cle, valeur, description) values
   ('poids_releve_sans_position', 0.5,
-   'Poids, dans la médiane du prix courant, d''un relevé sans position (un relevé avec position pèse 1) ; minimum 0,01');
+   'Poids, dans la médiane du prix courant, d''un relevé sans position (un relevé avec position pèse 1) ; minimum 0,01'),
+  ('rayon_position_max_m', 3000,
+   'Distance maximale, en mètres, entre la position d''un relevé et son marché pour qu''elle donne le poids plein ; au-delà, ou sans coordonnées du marché, le relevé pèse comme un relevé sans position');
 
 -- Médiane pondérée, interpolée comme une médiane ordinaire : avec des poids égaux
 -- elle donne exactement le même résultat que percentile_cont(0.5). Entrées triées
--- par valeur croissante. Le relevé i est placé au milieu de son poids sur l'axe
--- cumulé ; la médiane est lue à la position 0,5.
+-- par valeur croissante ; les poids nuls ou négatifs sont ignorés. Le relevé i est
+-- placé au milieu de son poids sur l'axe cumulé ; la médiane est lue à la
+-- position 0,5. Fonction pure : elle reste appelable, car Postgres exige de l'appelant d'une vue
+-- qu'il puisse exécuter les fonctions de cette vue (ici prix_courants).
 create function public.mediane_ponderee(valeurs double precision[], poids double precision[])
 returns double precision
 language plpgsql
 immutable
+strict
 as $$
 declare
   n integer := coalesce(array_length(valeurs, 1), 0);
@@ -112,39 +121,51 @@ declare
   cumul double precision := 0;
   position_precedente double precision;
   position_courante double precision;
+  precedent integer;
   i integer;
 begin
-  if n = 0 then
-    return null;
+  if n <> coalesce(array_length(poids, 1), 0) then
+    raise exception 'valeurs et poids doivent avoir la même longueur' using errcode = '22023';
   end if;
-  select sum(p) into total from unnest(poids) as p;
-  if total is null or total <= 0 then
+  select sum(p) into total from unnest(poids) as p where p > 0;
+  if total is null then
     return null;
   end if;
 
   for i in 1..n loop
-    position_courante := (cumul + poids[i] / 2) / total;
-    if position_courante >= 0.5 then
-      if i = 1 or position_courante = position_precedente or position_courante = 0.5 then
-        return valeurs[i];
+    if poids[i] > 0 then
+      position_courante := (cumul + poids[i] / 2) / total;
+      if position_courante >= 0.5 then
+        if precedent is null or position_courante = 0.5 then
+          return valeurs[i];
+        end if;
+        return valeurs[precedent]
+          + (0.5 - position_precedente) / (position_courante - position_precedente)
+            * (valeurs[i] - valeurs[precedent]);
       end if;
-      return valeurs[i - 1]
-        + (0.5 - position_precedente) / (position_courante - position_precedente) * (valeurs[i] - valeurs[i - 1]);
+      position_precedente := position_courante;
+      precedent := i;
+      cumul := cumul + poids[i];
     end if;
-    position_precedente := position_courante;
-    cumul := cumul + poids[i];
   end loop;
-  return valeurs[n];
+  return valeurs[precedent];
 end;
 $$;
 
 -- Prix courant : mêmes règles qu'avant (7 jours, publication avec un relais ou
--- trois contributeurs), mais la médiane est pondérée par la position.
+-- trois contributeurs), mais la médiane est pondérée. Un relevé pèse 1 quand sa
+-- position est vérifiée, c'est-à-dire à moins de `rayon_position_max_m` de son
+-- marché : sans cela, un client pourrait envoyer une position quelconque pour peser
+-- plus. Sinon (sans position, position trop éloignée, marché sans coordonnées), il
+-- pèse `poids_releve_sans_position`.
 create or replace view public.prix_courants as
-with poids as (
-  select greatest(coalesce(
-    (select valeur from public.parametres where cle = 'poids_releve_sans_position'), 0.5), 0.01)::double precision
-    as sans_position
+with reglages as (
+  select
+    greatest(coalesce(
+      (select valeur from public.parametres where cle = 'poids_releve_sans_position'), 0.5), 0.01)::double precision
+      as poids_sans_position,
+    coalesce((select valeur from public.parametres where cle = 'rayon_position_max_m'), 3000)::double precision
+      as rayon
 ),
 releves_qualifies as (
   select
@@ -157,10 +178,13 @@ releves_qualifies as (
     s.observe_le,
     pr.est_relais,
     s.observe_le >= now() - interval '7 days' as recent,
-    case when s.latitude is not null then 1::double precision else poids.sans_position end as poids
+    case
+      when s.distance_marche_m is not null and s.distance_marche_m <= reglages.rayon then 1::double precision
+      else reglages.poids_sans_position
+    end as poids
   from public.releves s
   join public.profils pr on pr.id = s.contributeur_id
-  cross join poids
+  cross join reglages
 ),
 agregats as (
   select

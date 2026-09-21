@@ -129,6 +129,29 @@ describe('la position reste côté serveur', () => {
     },
   );
 
+  it('la vue des prix courants ne contient aucune colonne de position', async () => {
+    const auteur = await contributeur();
+    await auteur.client.from('releves').insert(await releve({ latitude: 6.37, longitude: 2.43 }));
+
+    const { data, error } = await lecteurAnonyme.from('prix_courants').select('*').eq('marche_id', scenario.marcheId);
+
+    expect(error).toBeNull();
+    for (const colonne of Object.keys(data![0] ?? {})) {
+      expect(colonne).not.toMatch(/latitude|longitude|distance|position/);
+    }
+  });
+
+  it('on ne peut ni filtrer ni trier sur la position, ce qui permettrait de la deviner', async () => {
+    const auteur = await contributeur();
+    await auteur.client.from('releves').insert(await releve({ latitude: 6.37, longitude: 2.43 }));
+
+    const filtre = await auteur.client.from('releves').select('id').gt('latitude', 6);
+    const tri = await auteur.client.from('releves').select('id').order('longitude');
+
+    expect(filtre.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
+    expect(tri.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
+  });
+
   it('un lecteur anonyme ne lit pas non plus la position', async () => {
     const { error } = await lecteurAnonyme.from('releves').select('latitude, longitude');
 
@@ -216,9 +239,48 @@ describe('poids dans le prix courant', () => {
     }
   });
 
-  it('le poids par défaut est de 0,5', async () => {
-    const { data } = await admin.from('parametres').select('valeur').eq('cle', 'poids_releve_sans_position').single();
+  it("une position très éloignée du marché ne donne pas le poids plein : elle ne s'usurpe pas", async () => {
+    const usurpee = { latitude: 0, longitude: 0 };
+    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 400, position: usurpee });
+    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 800 });
+    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 1200 });
 
-    expect(Number(data!.valeur)).toBe(0.5);
+    // Les trois relevés pèsent 0,5 : c'est la médiane simple, pas 666,67.
+    expect((await prixCourant()).prix).toBe(800);
+  });
+
+  it('le rayon de vérification de la position est paramétrable', async () => {
+    const { data: initial } = await admin.from('parametres').select('valeur').eq('cle', 'rayon_position_max_m').single();
+    await troisReleves([true, false, false]); // la position est à environ 1 112 m du marché
+    await admin.from('parametres').update({ valeur: 500 }).eq('cle', 'rayon_position_max_m');
+    try {
+      expect((await prixCourant()).prix).toBe(800); // 1 112 m > 500 m : plus de poids plein
+    } finally {
+      await admin.from('parametres').update({ valeur: initial!.valeur }).eq('cle', 'rayon_position_max_m');
+    }
+  });
+
+  it("sans coordonnées du marché, la position ne peut pas être vérifiée : elle ne donne pas le poids plein", async () => {
+    const sansCoordonnees = await creerScenario();
+    try {
+      for (const [prix, position] of [[400, AVEC], [800, undefined], [1200, undefined]] as const) {
+        await sansCoordonnees.relever(await sansCoordonnees.contributeur(), 'maïs', 'kg', { prix, ...(position ? { position } : {}) });
+      }
+
+      const { data } = await lecteurAnonyme.from('prix_courants').select('prix').eq('marche_id', sansCoordonnees.marcheId).single();
+
+      expect(data!.prix).toBe(800);
+    } finally {
+      await sansCoordonnees.nettoyer();
+    }
+  });
+
+  it('le poids par défaut est de 0,5 et le rayon par défaut de 3 000 m', async () => {
+    const { data } = await admin.from('parametres').select('cle, valeur').in('cle', ['poids_releve_sans_position', 'rayon_position_max_m']);
+
+    expect(Object.fromEntries(data!.map((p) => [p.cle, Number(p.valeur)]))).toEqual({
+      poids_releve_sans_position: 0.5,
+      rayon_position_max_m: 3000,
+    });
   });
 });
