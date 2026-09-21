@@ -51,7 +51,8 @@ function messageVide(marche: boolean, produit: boolean): string {
   return 'Aucun prix pour le moment.';
 }
 
-export function usePrix() {
+/** `retours` : nombre de retours sur l'onglet ; chaque retour recharge les prix. */
+export function usePrix(retours = 0) {
   const [etat, setEtat] = useState<Etat>({ statut: 'chargement' });
   const [actualisation, setActualisation] = useState(false);
   const [marcheId, setMarcheId] = useState<number | null>(null);
@@ -83,6 +84,11 @@ export function usePrix() {
   useEffect(() => {
     chargerPremiereFois();
   }, [chargerPremiereFois]);
+
+  // Retour sur l'onglet : on recharge en gardant les prix déjà affichés.
+  useEffect(() => {
+    if (retours > 0) actualiser();
+  }, [retours, actualiser]);
 
   const prixAffiches = useMemo(
     () =>
