@@ -35,8 +35,9 @@ export function useReleve(produits: Produit[], marches: Marche[], proprietaire: 
   const position = usePosition();
   // Le state ne suffit pas contre un double appui avant le prochain rendu.
   const envoiVerrou = useRef(false);
-  // Fixés à la saisie et gardés pour la confirmation d'un prix hors bornes : un renvoi du
-  // même relevé (coupure, réponse perdue) ne peut ainsi jamais en créer un second.
+  // Fixés au premier envoi et gardés tant que le relevé n'est ni reçu ni gardé sur le téléphone
+  // (confirmation d'un prix hors bornes, nouvel essai) : un renvoi du même relevé ne peut
+  // ainsi jamais en créer un second.
   const identifiant = useRef<string | null>(null);
   const saisieLe = useRef('');
 
@@ -101,7 +102,17 @@ export function useReleve(produits: Produit[], marches: Marche[], proprietaire: 
     envoiVerrou.current = true;
     setEnvoiEnCours(true);
     setMessage(null);
-    if (!confirme || identifiant.current === null) {
+    try {
+      await tenterEnvoi(confirme);
+    } finally {
+      envoiVerrou.current = false;
+      setEnvoiEnCours(false);
+    }
+  }
+
+  async function tenterEnvoi(confirme: boolean) {
+    if (!saisieValide) return;
+    if (identifiant.current === null) {
       identifiant.current = nouvelIdentifiant();
       saisieLe.current = new Date().toISOString();
     }
@@ -121,39 +132,11 @@ export function useReleve(produits: Produit[], marches: Marche[], proprietaire: 
     const resultat = await envoyerReleve(charge);
 
     if (resultat.statut === 'reseau') {
-      // Pas de réseau : le relevé est gardé sur le téléphone, avec la date de la saisie.
-      try {
-        await ajouter({
-          ...charge,
-          observe_le: saisieLe.current,
-          proprietaire,
-          produit: produit.nom,
-          unite: unite.symbole,
-          marche: marches.find((m) => m.id === marcheId)?.nom ?? '',
-          statut: 'en_attente',
-        });
-      } catch {
-        envoiVerrou.current = false;
-        setEnvoiEnCours(false);
-        setMessage({ texte: "Impossible de garder le relevé sur le téléphone. Réessayez : votre saisie est conservée.", erreur: true });
-        return;
-      }
-      envoiVerrou.current = false;
-      setEnvoiEnCours(false);
-      setHorsBornes(null);
-      setPrixSaisi('');
-      setMessage({
-        texte: 'Pas de connexion : votre relevé est conservé sur le téléphone et sera envoyé dès que le réseau revient.',
-        erreur: false,
-      });
+      await garderHorsLigne(charge);
       return;
     }
-    envoiVerrou.current = false;
-    setEnvoiEnCours(false);
-
     if (resultat.statut === 'envoye') {
-      setHorsBornes(null);
-      setPrixSaisi('');
+      viderLaSaisie();
       setMessage({
         texte: lecture.demandee && lecture.position === null
           ? 'Merci ! Votre relevé est enregistré, sans position (position indisponible).'
@@ -168,6 +151,39 @@ export function useReleve(produits: Produit[], marches: Marche[], proprietaire: 
       return;
     }
     setMessage({ texte: messageDeRefus(resultat.code), erreur: true });
+  }
+
+  // Pas de réseau : le relevé est gardé sur le téléphone, avec la date de la saisie.
+  async function garderHorsLigne(charge: ChargeReleve) {
+    try {
+      await ajouter({
+        ...charge,
+        observe_le: saisieLe.current,
+        proprietaire,
+        produit: produit!.nom,
+        unite: unite!.symbole,
+        marche: marches.find((m) => m.id === marcheId)?.nom ?? '',
+        statut: 'en_attente',
+      });
+    } catch {
+      setMessage({
+        texte: 'Impossible de garder le relevé sur le téléphone. Réessayez : votre saisie est conservée.',
+        erreur: true,
+      });
+      return;
+    }
+    viderLaSaisie();
+    setMessage({
+      texte: 'Pas de connexion : votre relevé est conservé sur le téléphone et sera envoyé dès que le réseau revient.',
+      erreur: false,
+    });
+  }
+
+  // La tentative est close (reçue ou gardée sur le téléphone) : la prochaine saisie aura son identifiant.
+  function viderLaSaisie() {
+    identifiant.current = null;
+    setHorsBornes(null);
+    setPrixSaisi('');
   }
 
   const avertissement =

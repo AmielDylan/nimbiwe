@@ -12,7 +12,7 @@ grant insert (id) on public.releves to authenticated;
 -- Un renvoi d'un relevé déjà enregistré doit être reconnu comme tel (23505, doublon), et
 -- non refusé pour une autre raison : les garde-fous comptent le relevé déjà enregistré
 -- (limite du jour atteinte par lui-même), ou ont changé depuis (compte bloqué, date
--- devenue trop ancienne). Ce déclencheur passe avant les autres (ordre alphabétique).
+-- devenue trop ancienne). Les déclencheurs BEFORE INSERT s'exécutent par ordre alphabétique de nom : celui-ci passe avant tous les garde-fous (`verifier_releve_…`, `juger_…`) ; seul `calculer_distance_…` le précède, et il ne refuse rien. Ne pas le renommer sans revérifier cet ordre (test « limite atteinte / compte bloqué »).
 -- Sans `security definer` : il ne voit que les relevés de l'appelant, ce qui suffit ;
 -- l'identifiant d'un autre contributeur est refusé par la clé primaire.
 create function public.ecarter_releve_deja_recu()
@@ -21,6 +21,9 @@ language plpgsql
 set search_path = ''
 as $$
 begin
+  -- Deux envois simultanés du même relevé passent l'un après l'autre : le second voit alors
+  -- le relevé du premier, au lieu de compter ce relevé dans la limite du jour (NB002).
+  perform pg_advisory_xact_lock(hashtextextended(new.id::text, 0));
   if exists (select 1 from public.releves where id = new.id) then
     raise exception 'Ce relevé a déjà été reçu' using errcode = '23505';
   end if;

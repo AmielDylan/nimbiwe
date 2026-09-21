@@ -62,6 +62,24 @@ function reveniraAuPremierPlan() {
 const MESSAGE_CONSERVE =
   'Pas de connexion : votre relevé est conservé sur le téléphone et sera envoyé dès que le réseau revient.';
 
+/** Un relevé gardé sur le téléphone du compte de test, saisi il y a `jours` jours. */
+function releveGardeIlYaJours(jours: number) {
+  return {
+    id: `releve-ancien-${jours}`,
+    proprietaire: UTILISATEUR_ID,
+    produit_id: 1,
+    unite_id: 10,
+    marche_id: 1,
+    quantite: 1,
+    prix_total: 300,
+    observe_le: new Date(Date.now() - jours * 24 * 60 * 60 * 1000).toISOString(),
+    produit: 'maïs',
+    unite: 'kg',
+    marche: 'Ganhi',
+    statut: 'en_attente',
+  };
+}
+
 describe('saisie sans réseau', () => {
   it('garde le relevé sur le téléphone et le montre dans la liste des relevés en attente', async () => {
     const api = simulerApi(donnees);
@@ -140,7 +158,7 @@ describe('reconnexion', () => {
     expect(await fileGardee()).toEqual([]);
   });
 
-  it("réessaie à intervalle régulier, sans que l'utilisateur ait rien à faire", async () => {
+  it("réessaie à intervalle régulier, sans que le contributeur ait rien à faire", async () => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
     const api = simulerApi(donnees);
     await ouvrirLeFormulaire();
@@ -206,6 +224,23 @@ describe('reconnexion', () => {
     expect(api.releves).toHaveLength(1);
   });
 
+  it("n'envoie pas un relevé supprimé entre-temps", async () => {
+    const api = simulerApi(donnees);
+    await ouvrirLeFormulaire();
+    api.reseauCoupe = true;
+    await AsyncStorage.setItem(CLE_FILE, JSON.stringify([releveGardeIlYaJours(1)]));
+    reveniraAuPremierPlan(); // la file est relue ; le réseau est coupé, le relevé reste en attente
+    await screen.findByText("En attente d'envoi");
+
+    fireEvent.press(within(screen.getByTestId(/^releve-en-attente-/)).getByRole('button', { name: 'Supprimer' }));
+    await waitFor(() => expect(screen.queryByText("En attente d'envoi")).not.toBeOnTheScreen());
+    api.reseauCoupe = false;
+    reveniraAuPremierPlan();
+    await act(async () => {});
+
+    expect(api.releves).toEqual([]);
+  });
+
   it("n'envoie pas les relevés en attente d'un autre compte", async () => {
     const api = simulerApi(donnees);
     await AsyncStorage.setItem(
@@ -255,7 +290,7 @@ describe('refus à la synchronisation', () => {
 
     expect(
       await screen.findByText(
-        'Refusé : Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.',
+        'Refusé : Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez dans quelques heures.',
       ),
     ).toBeOnTheScreen();
     expect(await fileGardee()).toEqual([expect.objectContaining({ statut: 'refuse' })]);
@@ -277,11 +312,22 @@ describe('refus à la synchronisation', () => {
   });
 
   it('dit qu’un relevé saisi il y a plus de 7 jours ne peut plus être envoyé', async () => {
+    simulerApi(donnees, { releveRefuse: 'NB004' });
+    await AsyncStorage.setItem(CLE_FILE, JSON.stringify([releveGardeIlYaJours(9)]));
+
+    await ouvrirLeFormulaire();
+
+    expect(
+      await screen.findByText('Refusé : Ce relevé a été saisi il y a plus de 7 jours : il ne peut plus être envoyé.'),
+    ).toBeOnTheScreen();
+  });
+
+  it("n’accuse pas l'ancienneté quand la date refusée est récente : l'horloge du téléphone était fausse", async () => {
     const api = simulerApi(donnees, { releveRefuse: 'NB004' });
     await saisirHorsLigne(api);
 
     expect(
-      await screen.findByText('Refusé : Ce relevé a été saisi il y a plus de 7 jours : il ne peut plus être envoyé.'),
+      await screen.findByText(/^Refusé : La date de saisie de ce relevé n'est pas acceptée/),
     ).toBeOnTheScreen();
   });
 

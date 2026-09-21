@@ -25,11 +25,14 @@ export type ChargeReleve = {
   hors_bornes_confirme?: true;
 };
 
+/** Sens de l'écart quand le serveur juge un prix hors bornes. */
+export type Sens = 'haut' | 'bas';
+
 export type ResultatEnvoi =
   | { statut: 'envoye' }
   // Ni réseau, ni serveur joignable : rien n'est perdu, on réessaiera.
   | { statut: 'reseau' }
-  | { statut: 'refuse'; code: string | undefined; hint?: 'haut' | 'bas' };
+  | { statut: 'refuse'; code: string | undefined; hint?: Sens };
 
 /**
  * Envoie un relevé. Renvoyer le même identifiant est sans danger : un relevé déjà
@@ -39,23 +42,33 @@ export async function envoyerReleve(charge: ChargeReleve): Promise<ResultatEnvoi
   const { error, status } = await supabase.from('releves').insert(charge);
   if (!error || error.code === DEJA_RECU) return { statut: 'envoye' };
   // Statut 0 : la requête n'a pas abouti (réseau coupé, délai dépassé).
-  if (status === 0 || status >= 500) return { statut: 'reseau' };
-  return { statut: 'refuse', code: error.code, hint: error.hint === 'bas' ? 'bas' : error.hint === 'haut' ? 'haut' : undefined };
+  // 408 et 429 : le serveur demande d'attendre, ce n'est pas un refus du relevé.
+  if (status === 0 || status >= 500 || status === 408 || status === 429) return { statut: 'reseau' };
+  const hint = error.hint === 'haut' || error.hint === 'bas' ? error.hint : undefined;
+  return { statut: 'refuse', code: error.code, hint };
 }
 
-/** Le message à montrer pour un refus ; `enAttente` : le relevé avait été saisi plus tôt, hors ligne. */
-export function messageDeRefus(code: string | undefined, enAttente = false): string {
+// Ancienneté maximale d'une date d'observation : valeur par défaut du serveur (`releve_anciennete_max_jours`).
+const JOURS_MAX = 7;
+
+/**
+ * Le message à montrer pour un refus. `saisiLe` : la date de saisie d'un relevé gardé sur le
+ * téléphone (il avait été saisi plus tôt, hors ligne).
+ */
+export function messageDeRefus(code: string | undefined, saisiLe?: string): string {
+  const enAttente = saisiLe !== undefined;
   switch (code) {
     case LIMITE_QUOTIDIENNE:
-      return 'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.';
+      return 'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez dans quelques heures.';
     case COMPTE_BLOQUE:
       return "Votre compte ne peut plus relever de prix. Contactez l'équipe Nimbiwe.";
     case COMPTE_INCONNU:
       return "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.";
     case DATE_INVALIDE:
-      return enAttente
-        ? 'Ce relevé a été saisi il y a plus de 7 jours : il ne peut plus être envoyé.'
-        : 'La date de votre téléphone semble incorrecte. Vérifiez-la, puis réessayez.';
+      if (!enAttente) return 'La date de votre téléphone semble incorrecte. Vérifiez-la, puis réessayez.';
+      return Date.now() - new Date(saisiLe).getTime() > JOURS_MAX * 24 * 60 * 60 * 1000
+        ? `Ce relevé a été saisi il y a plus de ${JOURS_MAX} jours : il ne peut plus être envoyé.`
+        : "La date de saisie de ce relevé n'est pas acceptée (l'horloge du téléphone était peut-être mal réglée). Supprimez-le, puis relevez de nouveau.";
     default:
       return enAttente
         ? "Le serveur a refusé ce relevé. Vous pouvez réessayer ou le supprimer."

@@ -15,7 +15,7 @@ function statut(releve: ReleveAffiche, aConfirmer: boolean): string {
   if (aConfirmer) {
     return `Refusé : ce prix semble très ${releve.refus?.hint === 'bas' ? 'bas' : 'élevé'}. Confirmez-le ou supprimez ce relevé.`;
   }
-  return `Refusé : ${messageDeRefus(releve.refus?.code, true)}`;
+  return `Refusé : ${messageDeRefus(releve.refus?.code, releve.observe_le)}`;
 }
 
 /** Les relevés saisis sans réseau et pas encore reçus par le serveur. */

@@ -235,7 +235,7 @@ describe('refus et pannes', () => {
 
     expect(
       await screen.findByText(
-        'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.',
+        'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez dans quelques heures.',
       ),
     ).toBeOnTheScreen();
   });

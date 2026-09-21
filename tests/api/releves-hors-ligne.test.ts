@@ -103,6 +103,20 @@ describe('renvoi sans doublon', () => {
     expect(await nombreDeReleves()).toBe(1);
   });
 
+  it("deux renvois simultanés au plafond de la limite du jour restent un envoi et un doublon, sans refus à tort", async () => {
+    const auteur = await contributeur();
+    for (let i = 0; i < 4; i++) await auteur.client.from('releves').insert(await saisie());
+    const cinquieme = await saisie();
+
+    const [a, b] = await Promise.all([
+      auteur.client.from('releves').insert(cinquieme),
+      auteur.client.from('releves').insert(cinquieme),
+    ]);
+
+    expect([a.error?.code ?? null, b.error?.code ?? null].sort()).toEqual([DOUBLON, null]); // et non NB002
+    expect(await nombreDeReleves()).toBe(5);
+  });
+
   it("l'identifiant d'un autre contributeur ne permet ni d'écraser ni de lire son relevé", async () => {
     const premier = await contributeur();
     const second = await contributeur();
