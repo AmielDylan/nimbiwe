@@ -11,8 +11,16 @@ Un prix saisi par un utilisateur pour un produit, sur un marché, dans une unit�
 _Avoid_: Signalement, signaler (évoquent une alerte ou un bug), collecte, collecter (ambigus avec la collecte de données personnelles), contribution, entrée, report
 
 **Prix courant**:
-La médiane des relevés des 7 derniers jours d'un même produit, sur un même marché, dans une même unité.
+La médiane pondérée des relevés des 7 derniers jours d'un même produit, sur un même marché, dans une même unité. Chaque relevé compte selon son **poids** ; à poids égaux, c'est la médiane ordinaire.
 _Avoid_: Prix du jour, prix moyen, cours
+
+**Poids**:
+L'importance d'un relevé dans le prix courant. Un relevé pèse 1 quand sa **position** est vérifiée, moins sinon (0,5 par défaut). Les relais pèseront davantage (bloc 4).
+_Avoid_: Note, score, fiabilité
+
+**Position**:
+Les coordonnées que le contributeur joint, s'il le souhaite, à un relevé. Elle n'est jamais montrée : ni aux autres, ni à son auteur. Le serveur en déduit la distance au marché et ne la retient que si elle est plausible. Refuser de la partager ne bloque jamais un relevé.
+_Avoid_: Localisation, GPS, géolocalisation
 
 **Bornes plausibles**:
 La fourchette de prix jugée réaliste pour un produit dans une unité. Un relevé hors bornes est soumis à l'utilisateur pour confirmation, jamais refusé.
