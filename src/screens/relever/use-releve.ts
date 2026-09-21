@@ -1,18 +1,12 @@
 import { useRef, useState } from 'react';
 
+import { HORS_BORNES, type ChargeReleve, envoyerReleve, messageDeRefus } from '@/lib/envoi-releve';
+import { ajouter } from '@/lib/file-attente';
 import { formaterMontant, formaterQuantite } from '@/lib/formats';
-import { supabase } from '@/lib/supabase';
+import { nouvelIdentifiant } from '@/lib/identifiant';
 
 import { usePosition } from './use-position';
-import type { Produit } from './use-referentiel';
-
-// Codes de refus renvoyés par la base (voir la migration « relever_un_prix »).
-const COMPTE_BLOQUE = 'NB001';
-const LIMITE_QUOTIDIENNE = 'NB002';
-const HORS_BORNES = 'NB003';
-const DATE_INVALIDE = 'NB004';
-// Clé étrangère : le compte (ou son profil) n'existe plus côté serveur.
-const COMPTE_INCONNU = '23503';
+import type { Marche, Produit } from './use-referentiel';
 
 type Message = { texte: string; erreur: boolean };
 
@@ -28,7 +22,7 @@ function nombre(saisie: string, decimales: boolean): number {
 }
 
 /** Le formulaire de relevé : saisie, garde-fous du serveur et envoi. */
-export function useReleve(produits: Produit[], apresEnvoi: () => void) {
+export function useReleve(produits: Produit[], marches: Marche[], proprietaire: string, apresEnvoi: () => void) {
   const [produitId, setProduitId] = useState<number | null>(null);
   const [marcheId, setMarcheId] = useState<number | null>(null);
   const [uniteId, setUniteId] = useState<number | null>(null);
@@ -41,6 +35,11 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
   const position = usePosition();
   // Le state ne suffit pas contre un double appui avant le prochain rendu.
   const envoiVerrou = useRef(false);
+  // Fixés au premier envoi et gardés tant que le relevé n'est ni reçu ni gardé sur le téléphone
+  // (confirmation d'un prix hors bornes, nouvel essai) : un renvoi du même relevé ne peut
+  // ainsi jamais en créer un second.
+  const identifiant = useRef<string | null>(null);
+  const saisieLe = useRef('');
 
   const produit = produits.find((p) => p.id === produitId) ?? null;
   const unitesValides = produit?.unites ?? [];
@@ -103,24 +102,41 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     envoiVerrou.current = true;
     setEnvoiEnCours(true);
     setMessage(null);
+    try {
+      await tenterEnvoi(confirme);
+    } finally {
+      envoiVerrou.current = false;
+      setEnvoiEnCours(false);
+    }
+  }
+
+  async function tenterEnvoi(confirme: boolean) {
+    if (!saisieValide) return;
+    if (identifiant.current === null) {
+      identifiant.current = nouvelIdentifiant();
+      saisieLe.current = new Date().toISOString();
+    }
     // La position est lue à l'envoi ; sans elle, le relevé part quand même.
     const lecture = await position.lirePosition();
     // Le client n'envoie que les champs autorisés ; le reste est décidé par le serveur.
-    const { error } = await supabase.from('releves').insert({
+    const charge: ChargeReleve = {
+      id: identifiant.current,
       produit_id: produit.id,
       unite_id: unite.id,
       marche_id: marcheId,
       quantite,
       prix_total: prix,
       ...(lecture.position ?? {}),
-      ...(confirme ? { hors_bornes_confirme: true } : {}),
-    });
-    envoiVerrou.current = false;
-    setEnvoiEnCours(false);
+      ...(confirme ? { hors_bornes_confirme: true as const } : {}),
+    };
+    const resultat = await envoyerReleve(charge);
 
-    if (!error) {
-      setHorsBornes(null);
-      setPrixSaisi('');
+    if (resultat.statut === 'reseau') {
+      await garderHorsLigne(charge);
+      return;
+    }
+    if (resultat.statut === 'envoye') {
+      viderLaSaisie();
       setMessage({
         texte: lecture.demandee && lecture.position === null
           ? 'Merci ! Votre relevé est enregistré, sans position (position indisponible).'
@@ -130,11 +146,44 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
       apresEnvoi();
       return;
     }
-    if (error.code === HORS_BORNES) {
-      setHorsBornes(error.hint === 'bas' ? 'bas' : 'haut');
+    if (resultat.code === HORS_BORNES) {
+      setHorsBornes(resultat.hint === 'bas' ? 'bas' : 'haut');
       return;
     }
-    setMessage({ texte: messageDeRefus(error.code), erreur: true });
+    setMessage({ texte: messageDeRefus(resultat.code), erreur: true });
+  }
+
+  // Pas de réseau : le relevé est gardé sur le téléphone, avec la date de la saisie.
+  async function garderHorsLigne(charge: ChargeReleve) {
+    try {
+      await ajouter({
+        ...charge,
+        observe_le: saisieLe.current,
+        proprietaire,
+        produit: produit!.nom,
+        unite: unite!.symbole,
+        marche: marches.find((m) => m.id === marcheId)?.nom ?? '',
+        statut: 'en_attente',
+      });
+    } catch {
+      setMessage({
+        texte: 'Impossible de garder le relevé sur le téléphone. Réessayez : votre saisie est conservée.',
+        erreur: true,
+      });
+      return;
+    }
+    viderLaSaisie();
+    setMessage({
+      texte: 'Pas de connexion : votre relevé est conservé sur le téléphone et sera envoyé dès que le réseau revient.',
+      erreur: false,
+    });
+  }
+
+  // La tentative est close (reçue ou gardée sur le téléphone) : la prochaine saisie aura son identifiant.
+  function viderLaSaisie() {
+    identifiant.current = null;
+    setHorsBornes(null);
+    setPrixSaisi('');
   }
 
   const avertissement =
@@ -166,19 +215,4 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     position: { partage: position.partage, information: position.information, changerLePartage: position.changerLePartage },
     corriger: () => setHorsBornes(null),
   };
-}
-
-function messageDeRefus(code: string | undefined): string {
-  switch (code) {
-    case LIMITE_QUOTIDIENNE:
-      return 'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.';
-    case COMPTE_BLOQUE:
-      return "Votre compte ne peut plus relever de prix. Contactez l'équipe Nimbiwe.";
-    case COMPTE_INCONNU:
-      return "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.";
-    case DATE_INVALIDE:
-      return "La date de votre téléphone semble incorrecte. Vérifiez-la, puis réessayez.";
-    default:
-      return "Impossible d'envoyer le relevé. Vérifiez votre connexion et réessayez : votre saisie est conservée.";
-  }
 }

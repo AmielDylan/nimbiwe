@@ -107,6 +107,12 @@ export type Simulation = {
   envoisDeReleve: number;
   /** Réactions reçues par le serveur simulé, dans l'ordre. */
   reactions: { methode: string; releve_id: string; type?: string }[];
+  /** Le réseau est coupé : toute requête échoue, comme sur un téléphone sans connexion. Modifiable en cours de test. */
+  reseauCoupe: boolean;
+  /** Le serveur refuse tout relevé avec ce code d'erreur. Modifiable en cours de test. */
+  releveRefuse: string | null;
+  /** Nombre de prochains relevés que le serveur reçoit et enregistre, mais dont la réponse se perd en route. */
+  reponsesPerdues: number;
 };
 
 function jwt(charge: object): string {
@@ -154,11 +160,16 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
     releves: [],
     envoisDeReleve: 0,
     reactions: [],
+    reseauCoupe: false,
+    releveRefuse: options.releveRefuse ?? null,
+    reponsesPerdues: 0,
   };
+  const idsRecus = new Set<string>();
   const mesReleves = [...(options.mesReleves ?? [])];
   const mesReactions: Record<string, 'confirmation' | 'contestation'> = { ...options.mesReactions };
 
   fetchFactice().mockImplementation(async (requete: RequestInfo | URL, init?: RequestInit) => {
+    if (simulation.reseauCoupe) throw new TypeError('Network request failed');
     const adresse = chemin(requete);
     const corps = init?.body ? JSON.parse(String(init.body)) : {};
 
@@ -226,12 +237,17 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
       if (init?.method === 'POST') {
         simulation.envoisDeReleve += 1;
         if (options.releveEnPanne) return json({ message: 'Erreur interne' }, 500);
-        if (options.releveRefuse) {
-          return json({ code: options.releveRefuse, message: 'Refusé par le serveur', details: null, hint: null }, 400);
+        if (simulation.releveRefuse) {
+          return json({ code: simulation.releveRefuse, message: 'Refusé par le serveur', details: null, hint: null }, 400);
         }
         if (options.horsBornes && corps.hors_bornes_confirme !== true) {
           return json({ code: 'NB003', message: 'Prix hors bornes', details: null, hint: options.horsBornes }, 400);
         }
+        // Un relevé déjà reçu (même identifiant) est reconnu comme un doublon, comme le fait la base.
+        if (corps.id && idsRecus.has(corps.id)) {
+          return json({ code: '23505', message: 'Ce relevé a déjà été reçu', details: null, hint: null }, 409);
+        }
+        if (corps.id) idsRecus.add(corps.id);
         simulation.releves.push(corps);
         const courantes = typeof donnees === 'function' ? donnees() : donnees;
         mesReleves.unshift({
@@ -246,6 +262,10 @@ export function simulerApi(donnees: Donnees | (() => Donnees), options: OptionsC
           },
           marches: { nom: courantes.marches.find((m) => m.id === corps.marche_id)?.nom ?? '' },
         });
+        if (simulation.reponsesPerdues > 0) {
+          simulation.reponsesPerdues -= 1;
+          throw new TypeError('Network request failed'); // le serveur a enregistré, mais l'app ne l'apprend pas
+        }
         return new Response(null, { status: 201 });
       }
       if (options.mesRelevesEnPanne) return json({ message: 'Erreur interne' }, 500);
