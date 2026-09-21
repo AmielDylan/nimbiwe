@@ -25,7 +25,13 @@
       "expo-router",
       "expo-status-bar",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Nimbiwe utilise votre position, si vous l'acceptez, pour vérifier que votre relevé vient bien du marché. Elle n'est jamais montrée aux autres."
+        }
+      ]
     ]
   }
 }

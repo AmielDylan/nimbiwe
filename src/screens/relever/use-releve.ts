@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { formaterMontant, formaterQuantite } from '@/lib/formats';
 import { supabase } from '@/lib/supabase';
 
+import { usePosition } from './use-position';
 import type { Produit } from './use-referentiel';
 
 // Codes de refus renvoyés par la base (voir la migration « relever_un_prix »).
@@ -37,6 +38,7 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
   // Sens de l'écart quand le serveur juge le prix hors bornes : la confirmation est attendue.
   const [horsBornes, setHorsBornes] = useState<'haut' | 'bas' | null>(null);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  const position = usePosition();
   // Le state ne suffit pas contre un double appui avant le prochain rendu.
   const envoiVerrou = useRef(false);
 
@@ -101,6 +103,8 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     envoiVerrou.current = true;
     setEnvoiEnCours(true);
     setMessage(null);
+    // La position est lue à l'envoi ; sans elle, le relevé part quand même.
+    const lecture = await position.lirePosition();
     // Le client n'envoie que les champs autorisés ; le reste est décidé par le serveur.
     const { error } = await supabase.from('releves').insert({
       produit_id: produit.id,
@@ -108,6 +112,7 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
       marche_id: marcheId,
       quantite,
       prix_total: prix,
+      ...(lecture.position ?? {}),
       ...(confirme ? { hors_bornes_confirme: true } : {}),
     });
     envoiVerrou.current = false;
@@ -116,7 +121,12 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     if (!error) {
       setHorsBornes(null);
       setPrixSaisi('');
-      setMessage({ texte: 'Merci ! Votre relevé est enregistré.', erreur: false });
+      setMessage({
+        texte: lecture.demandee && lecture.position === null
+          ? 'Merci ! Votre relevé est enregistré, sans position (position indisponible).'
+          : 'Merci ! Votre relevé est enregistré.',
+        erreur: false,
+      });
       apresEnvoi();
       return;
     }
@@ -153,6 +163,7 @@ export function useReleve(produits: Produit[], apresEnvoi: () => void) {
     // La confirmation n'a de sens que face à l'avertissement affiché.
     confirmer: () => horsBornes !== null && envoyer(true),
     erreurPrix,
+    position: { partage: position.partage, information: position.information, changerLePartage: position.changerLePartage },
     corriger: () => setHorsBornes(null),
   };
 }

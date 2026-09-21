@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Bouton } from '@/components/bouton';
 import { ChampTexte } from '@/components/champ-texte';
@@ -96,6 +96,25 @@ function Saisie({
         {releve.erreurPrix ?? releve.libellePrix}
       </Text>
 
+      <View style={styles.position}>
+        <Text style={[styles.etiquette, styles.libellePosition, { color: theme.texte }]}>Partager ma position</Text>
+        <Switch
+          accessibilityLabel="Partager ma position"
+          value={releve.position.partage}
+          onValueChange={releve.position.changerLePartage}
+          // Figé pendant l'envoi : le résultat se rapporte à ce que le contributeur avait choisi.
+          disabled={releve.envoiEnCours}
+          trackColor={{ true: theme.accent }}
+        />
+      </View>
+      <Text style={[styles.texte, { color: theme.texteSecondaire }]}>
+        Facultatif. Votre position n’est jamais montrée aux autres. Elle sert seulement à vérifier que votre relevé
+        vient bien du marché : un relevé avec position pèse davantage dans le prix courant.
+      </Text>
+      {releve.position.information && (
+        <Text style={[styles.texte, { color: theme.texteSecondaire }]}>{releve.position.information}</Text>
+      )}
+
       {releve.avertissement ? (
         <View style={[styles.avertissement, { backgroundColor: theme.carte, borderColor: theme.erreur }]}>
           <Text style={[styles.texte, { color: theme.texte }]}>{releve.avertissement}</Text>
@@ -128,4 +147,6 @@ const styles = StyleSheet.create({
   etiquette: { fontSize: 15, fontWeight: '600', marginTop: 4 },
   texte: { fontSize: 15, lineHeight: 21 },
   avertissement: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 10 },
+  position: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  libellePosition: { marginTop: 0 },
 });
