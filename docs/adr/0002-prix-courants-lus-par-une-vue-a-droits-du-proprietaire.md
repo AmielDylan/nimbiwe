@@ -7,3 +7,5 @@ Le linter de Supabase signale ce type de vue (`security_definer_view`) : c'est v
 Toute nouvelle vue ou fonction qui lit ces tables au nom du public suit la même règle : droits du propriétaire, colonnes calculées uniquement, `revoke all` puis `grant select` explicite.
 
 Les vues de calcul qui alimentent `prix_courants` (`releves_evalues`, base du jugement des relevés aberrants) et celle de revue (`releves_a_revoir`) suivent la même règle : droits du propriétaire, et fermées à l'API (`revoke all`) ; seule `prix_courants` est lisible par le public.
+
+La liste publique des relevés récents d'un prix (`releves_recents`) est une fonction, pas une vue : elle suit la même règle (droits du propriétaire, `set search_path = ''`, colonnes calculées uniquement) mais doit connaître l'appelant, pour `ma_reaction` et `est_le_mien`. Elle expose le nom affiché de l'auteur, jamais son identifiant, son numéro ni sa position. Les réactions (`reactions`) sont, elles, lisibles et modifiables par leur seul auteur ; les compteurs passent par la vue et la fonction.
