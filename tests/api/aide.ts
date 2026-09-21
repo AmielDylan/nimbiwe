@@ -43,7 +43,8 @@ export async function creerScenario(coordonnees?: Position) {
 
   const contributeurs: string[] = [];
 
-  async function contributeur(options: { relais?: boolean } = {}) {
+  /** `relais` : `true` pour le relais du marché de ce scénario, ou l'identifiant d'un autre marché. */
+  async function contributeur(options: { relais?: boolean | number } = {}) {
     const telephone = `229${Math.floor(10_000_000 + Math.random() * 89_999_999)}`;
     const { data, error: erreurUtilisateur } = await admin.auth.admin.createUser({
       phone: telephone,
@@ -53,7 +54,11 @@ export async function creerScenario(coordonnees?: Position) {
     // Le profil est créé par la base à la création du compte.
     const { error: erreurProfil } = await admin
       .from('profils')
-      .update({ nom_affiche: 'Test', est_relais: options.relais ?? false })
+      .update({
+        nom_affiche: 'Test',
+        est_relais: Boolean(options.relais),
+        marche_relais_id: options.relais === true ? marche.id : (options.relais || null),
+      })
       .eq('id', data.user.id);
     if (erreurProfil) throw erreurProfil;
     contributeurs.push(data.user.id);
@@ -87,6 +92,8 @@ export async function creerScenario(coordonnees?: Position) {
 
   async function nettoyer() {
     await admin.from('releves').delete().eq('marche_id', marche.id);
+    // Les relais de ce marché sont détachés avant sa suppression (clé étrangère).
+    await admin.from('profils').update({ est_relais: false, marche_relais_id: null }).eq('marche_relais_id', marche.id);
     await admin.from('marches').delete().eq('id', marche.id);
     for (const utilisateur of contributeurs) await admin.auth.admin.deleteUser(utilisateur);
   }
@@ -99,14 +106,20 @@ export const CODE_DE_TEST = '123456';
 // Réservés aux tests (supabase/config.toml) : ils sont supprimés et recréés à chaque test,
 // contrairement aux numéros 22900000101 à 22900000104 gardés pour l'usage manuel.
 const NUMEROS_DE_TEST = Array.from({ length: 12 }, (_, i) => `229000002${String(i + 1).padStart(2, '0')}`);
-let prochainNumero = Math.floor(Math.random() * NUMEROS_DE_TEST.length);
+// Un lot par fichier de test : les fichiers tournent en parallèle et chacun supprime ses comptes.
+const LOTS_DE_NUMEROS = {
+  connexion: NUMEROS_DE_TEST.slice(0, 9),
+  relais: NUMEROS_DE_TEST.slice(9),
+};
+const prochainNumero = { connexion: 0, relais: 0 };
 
 /**
  * Un numéro de test que personne n'a encore utilisé : le compte éventuellement
  * créé par un test précédent est supprimé, pour rejouer une « première connexion ».
  */
-export async function numeroDeTestNeuf(): Promise<string> {
-  const telephone = NUMEROS_DE_TEST[prochainNumero++ % NUMEROS_DE_TEST.length];
+export async function numeroDeTestNeuf(lot: keyof typeof LOTS_DE_NUMEROS = 'connexion'): Promise<string> {
+  const numeros = LOTS_DE_NUMEROS[lot];
+  const telephone = numeros[prochainNumero[lot]++ % numeros.length];
   const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
   if (error) throw error;
   const existant = data.users.find((utilisateur) => utilisateur.phone === telephone);

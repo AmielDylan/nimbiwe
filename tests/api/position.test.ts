@@ -221,11 +221,11 @@ describe('poids dans le prix courant', () => {
   });
 
   it('avec un nombre pair de relevés de même poids, la médiane est la moyenne des deux du milieu', async () => {
-    const relais = await scenario.contributeur({ relais: true });
-    await scenario.relever(relais, 'maïs', 'kg', { prix: 400, position: AVEC });
-    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 600, position: AVEC });
+    for (const prix of [400, 600, 800, 1000]) {
+      await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix, position: AVEC });
+    }
 
-    expect((await prixCourant()).prix).toBe(500);
+    expect((await prixCourant()).prix).toBe(700);
   });
 
   it('le poids est paramétrable', async () => {
