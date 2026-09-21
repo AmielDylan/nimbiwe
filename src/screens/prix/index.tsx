@@ -7,7 +7,7 @@ import { CartePrix } from './carte-prix';
 import { capitaliser } from '@/lib/formats';
 import { usePrix } from './use-prix';
 
-export function Prix() {
+export function Prix({ retours = 0 }: { retours?: number }) {
   const theme = useTheme();
   const {
     etat,
@@ -20,7 +20,7 @@ export function Prix() {
     choisirProduit,
     prixAffiches,
     messageVide,
-  } = usePrix();
+  } = usePrix(retours);
 
   return (
     <FlatList
