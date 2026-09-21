@@ -15,7 +15,7 @@ La médiane pondérée des relevés des 7 derniers jours d'un même produit, sur
 _Avoid_: Prix du jour, prix moyen, cours
 
 **Poids**:
-L'importance d'un relevé dans le prix courant. Un relevé pèse 1 quand sa **position** est vérifiée, moins sinon (0,5 par défaut). Les relais pèseront davantage (bloc 4).
+L'importance d'un relevé dans le prix courant. Un relevé pèse 1 quand sa **position** est vérifiée, moins sinon (0,5 par défaut) ; le relevé d'un **relais** sur son marché pèse en plus 3 fois davantage (facteur réglable).
 _Avoid_: Note, score, fiabilité
 
 **Position**:
@@ -57,7 +57,7 @@ _Avoid_: Marché (sans précision)
 ### Personnes
 
 **Relais**:
-Une personne locale de confiance, rattachée à un marché, dont les relevés servent d'ancre pour juger les autres et dont le poids est plus fort dans le prix courant.
+Une personne locale de confiance, rattachée à un marché, dont les relevés servent d'ancre pour juger les autres et dont le poids est plus fort dans le prix courant. Elle ancre son marché seulement : ailleurs, elle compte comme un contributeur ordinaire. Elle est désignée à la main depuis le tableau de bord et se connecte comme tout contributeur.
 _Avoid_: Enquêteur, agent, modérateur
 
 **Contributeur**:

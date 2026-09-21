@@ -43,7 +43,8 @@ export async function creerScenario(coordonnees?: Position) {
 
   const contributeurs: string[] = [];
 
-  async function contributeur(options: { relais?: boolean } = {}) {
+  /** `relais` : relais du marché de ce scénario ; `relaisDu` : relais d'un autre marché (identifiant). */
+  async function contributeur(options: { relais?: boolean; relaisDu?: number } = {}) {
     const telephone = `229${Math.floor(10_000_000 + Math.random() * 89_999_999)}`;
     const { data, error: erreurUtilisateur } = await admin.auth.admin.createUser({
       phone: telephone,
@@ -53,7 +54,11 @@ export async function creerScenario(coordonnees?: Position) {
     // Le profil est créé par la base à la création du compte.
     const { error: erreurProfil } = await admin
       .from('profils')
-      .update({ nom_affiche: 'Test', est_relais: options.relais ?? false })
+      .update({
+        nom_affiche: 'Test',
+        est_relais: Boolean(options.relais || options.relaisDu),
+        marche_relais_id: options.relaisDu ?? (options.relais ? marche.id : null),
+      })
       .eq('id', data.user.id);
     if (erreurProfil) throw erreurProfil;
     contributeurs.push(data.user.id);

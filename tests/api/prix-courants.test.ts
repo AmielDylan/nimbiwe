@@ -23,7 +23,8 @@ async function lirePrix() {
 
 describe('prix courant', () => {
   it('est la médiane des relevés des 7 derniers jours, sans compte pour le lire', async () => {
-    const relais = await scenario.contributeur({ relais: true });
+    // Trois contributeurs ordinaires : poids égaux, donc médiane simple (les relais pèsent plus, voir relais.test.ts).
+    const relais = await scenario.contributeur();
     const a = await scenario.contributeur();
     const b = await scenario.contributeur();
     await scenario.relever(relais, 'maïs', 'kg', { prix: 400 });

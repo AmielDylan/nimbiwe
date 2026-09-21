@@ -18,14 +18,15 @@ insert into auth.users (
 
 -- Les profils sont créés par la base à la création des comptes : on les complète.
 update public.profils p
-set nom_affiche = e.nom_affiche, est_relais = e.est_relais
+set nom_affiche = e.nom_affiche, est_relais = e.est_relais,
+    marche_relais_id = (select id from public.marches where nom = e.marche_relais)
 from (values
-  ('00000000-0000-4000-8000-000000000001'::uuid, 'Exemple – relais Ganhi', true),
-  ('00000000-0000-4000-8000-000000000002'::uuid, 'Exemple – relais Bohicon', true),
-  ('00000000-0000-4000-8000-000000000003'::uuid, 'Exemple – contributeur 1', false),
-  ('00000000-0000-4000-8000-000000000004'::uuid, 'Exemple – contributeur 2', false),
-  ('00000000-0000-4000-8000-000000000005'::uuid, 'Exemple – contributeur 3', false)
-) as e (id, nom_affiche, est_relais)
+  ('00000000-0000-4000-8000-000000000001'::uuid, 'Exemple – relais Ganhi', true, 'Ganhi'),
+  ('00000000-0000-4000-8000-000000000002'::uuid, 'Exemple – relais Bohicon', true, 'Bohicon'),
+  ('00000000-0000-4000-8000-000000000003'::uuid, 'Exemple – contributeur 1', false, null),
+  ('00000000-0000-4000-8000-000000000004'::uuid, 'Exemple – contributeur 2', false, null),
+  ('00000000-0000-4000-8000-000000000005'::uuid, 'Exemple – contributeur 3', false, null)
+) as e (id, nom_affiche, est_relais, marche_relais)
 where p.id = e.id;
 
 -- (auteur, marché, produit, unité, prix total, jours écoulés)
