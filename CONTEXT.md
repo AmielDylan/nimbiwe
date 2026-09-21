@@ -48,6 +48,10 @@ _Avoid_: Unité officielle
 Une unité d'usage courant au marché dont la quantité varie selon le vendeur (bol, tas, cuvette). Ne devient comparable qu'une fois convertie en unité standard avec les relais.
 _Avoid_: Unité traditionnelle
 
+**Facteur de conversion**:
+La quantité d'unité standard contenue dans une mesure locale, pour un produit donné (1 bol de maïs = 2,5 kg). Renseigné par le développeur avec les relais ; sans facteur, la mesure locale reste comparable uniquement à elle-même et rien n'est converti.
+_Avoid_: Taux, équivalence
+
 ### Lieux
 
 **Marché**:

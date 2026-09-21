@@ -13,6 +13,9 @@ export type PrixCourant = {
   prix: number | null;
   nombre_releves: number;
   dernier_releve_le: string;
+  /** Équivalent en unité standard d'une mesure locale, quand un facteur de conversion est connu. */
+  prix_converti: number | null;
+  unite_convertie: string | null;
 };
 
 /** Une ligne du référentiel (marché ou produit). */
