@@ -106,7 +106,7 @@ describe('relever, connecté', () => {
     await remplirEtEnvoyer({ prix: '450' });
 
     expect(await screen.findByText('Merci ! Votre relevé est enregistré.')).toBeOnTheScreen();
-    expect(api.releves).toEqual([{ produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
+    expect(api.releves).toEqual([{ id: expect.any(String), produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
     expect(screen.getByLabelText('Prix total en FCFA')).toHaveDisplayValue('');
   });
 
@@ -184,7 +184,7 @@ describe('prix hors bornes', () => {
 
     expect(await screen.findByText('Merci ! Votre relevé est enregistré.')).toBeOnTheScreen();
     expect(api.releves).toEqual([
-      { produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 4500, hors_bornes_confirme: true },
+      { id: expect.any(String), produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 4500, hors_bornes_confirme: true },
     ]);
   });
 
@@ -235,7 +235,7 @@ describe('refus et pannes', () => {
 
     expect(
       await screen.findByText(
-        'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez demain.',
+        'Vous avez atteint la limite de relevés du jour pour ce produit sur ce marché. Réessayez dans quelques heures.',
       ),
     ).toBeOnTheScreen();
   });
@@ -283,7 +283,7 @@ describe('refus et pannes', () => {
   });
 
   it("garde la saisie et propose de réessayer quand l'envoi échoue", async () => {
-    const api = simulerApi(donnees, { releveEnPanne: true });
+    const api = simulerApi(donnees, { releveRefuse: 'XX000' });
     await ouvrirLaReleveConnecte();
     await screen.findByRole('button', { name: 'Maïs' });
 

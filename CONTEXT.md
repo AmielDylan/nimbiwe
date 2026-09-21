@@ -52,6 +52,10 @@ _Avoid_: Unité traditionnelle
 La quantité d'unité standard contenue dans une mesure locale, pour un produit donné (1 bol de maïs = 2,5 kg). Renseigné par le développeur avec les relais ; sans facteur, la mesure locale reste comparable uniquement à elle-même et rien n'est converti.
 _Avoid_: Taux, équivalence
 
+**Relevé en attente**:
+Un relevé saisi sans réseau, gardé sur le téléphone jusqu'à ce que le serveur l'ait reçu. Sa date de saisie fait office de date d'observation. Refusé par le serveur, il reste visible avec son motif.
+_Avoid_: Brouillon, relevé en cache
+
 ### Lieux
 
 **Marché**:

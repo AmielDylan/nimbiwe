@@ -11,6 +11,9 @@ jest.mock('expo-location', () => ({
   getCurrentPositionAsync: jest.fn(),
 }));
 
+// Identifiants des relevés : le générateur natif n'existe pas sous Jest.
+jest.mock('expo-crypto', () => ({ randomUUID: () => require('node:crypto').randomUUID() }));
+
 // Stockage de la session : l'implémentation de test fournie par la bibliothèque.
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
