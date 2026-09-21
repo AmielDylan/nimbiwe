@@ -15,7 +15,7 @@ La médiane pondérée des relevés des 7 derniers jours d'un même produit, sur
 _Avoid_: Prix du jour, prix moyen, cours
 
 **Relevé aberrant**:
-Un relevé dont le prix unitaire s'écarte de la médiane de référence (même marché, produit et unité, 7 derniers jours) d'un facteur supérieur à 3, dans un sens ou dans l'autre (réglable). Il est écarté du prix courant, sans jamais être supprimé : il reste consultable pour revue. Aucun relevé n'est jugé sous 3 relevés récents, et le relevé du relais du marché n'est jamais écarté.
+Un relevé dont le prix unitaire s'écarte de la médiane de référence (même marché, produit et unité, 7 derniers jours) d'un facteur supérieur à 3, dans un sens ou dans l'autre (réglable). Il est écarté du prix courant, sans jamais être supprimé : il reste consultable pour revue. Seul le dernier relevé récent de chaque contributeur compte ; aucun relevé n'est jugé sous 3 contributeurs, et le relevé du relais du marché n'est jamais écarté.
 _Avoid_: Erreur, faux prix, prix rejeté
 
 **Poids**:
