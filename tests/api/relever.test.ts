@@ -95,7 +95,7 @@ describe("le client n'écrit que les champs autorisés", () => {
     ['le prix unitaire', { prix_unitaire: 1 }, COLONNE_CALCULEE],
     ['le signal hors bornes', { hors_bornes: false }, REFUSE_PAR_LA_SECURITE],
     ['la date de création', { cree_le: '2020-01-01T00:00:00Z' }, REFUSE_PAR_LA_SECURITE],
-    ['l’identifiant', { id: '00000000-0000-4000-8000-0000000000aa' }, REFUSE_PAR_LA_SECURITE],
+    // L'identifiant, lui, est écrivable depuis la saisie hors ligne (voir releves-hors-ligne.test.ts).
   ])('refuse de forger %s', async (_nom, champ, codeAttendu) => {
     const auteur = await contributeur();
 

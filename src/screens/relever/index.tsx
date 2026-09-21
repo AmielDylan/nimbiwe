@@ -17,5 +17,5 @@ export function Relever() {
       </View>
     );
   }
-  return session ? <Formulaire /> : <InviteConnexion />;
+  return session ? <Formulaire proprietaire={session.user.id} /> : <InviteConnexion />;
 }

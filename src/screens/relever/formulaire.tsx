@@ -6,12 +6,14 @@ import { Puces } from '@/components/puces';
 import { capitaliser } from '@/lib/formats';
 import { useTheme } from '@/theme';
 
+import { EnAttente } from './en-attente';
 import { MesReleves } from './mes-releves';
 import { useReleve } from './use-releve';
+import { useRelevesEnAttente } from './use-releves-en-attente';
 import { useMesReleves } from './use-mes-releves';
 import { type ReferentielPret, useReferentiel } from './use-referentiel';
 
-export function Formulaire() {
+export function Formulaire({ proprietaire }: { proprietaire: string }) {
   const theme = useTheme();
   const { etat, recharger } = useReferentiel();
   const mesReleves = useMesReleves();
@@ -34,18 +36,21 @@ export function Formulaire() {
     );
   }
 
-  return <Saisie etat={etat} mesReleves={mesReleves} />;
+  return <Saisie etat={etat} mesReleves={mesReleves} proprietaire={proprietaire} />;
 }
 
 function Saisie({
   etat,
   mesReleves,
+  proprietaire,
 }: {
   etat: ReferentielPret;
   mesReleves: ReturnType<typeof useMesReleves>;
+  proprietaire: string;
 }) {
   const theme = useTheme();
-  const releve = useReleve(etat.produits, mesReleves.recharger);
+  const releve = useReleve(etat.produits, etat.marches, proprietaire, mesReleves.recharger);
+  const attente = useRelevesEnAttente(proprietaire);
 
   return (
     <ScrollView
@@ -134,6 +139,8 @@ function Saisie({
           {releve.message.texte}
         </Text>
       )}
+
+      <EnAttente attente={attente} />
 
       <MesReleves releves={mesReleves.releves} erreur={mesReleves.erreur} />
     </ScrollView>

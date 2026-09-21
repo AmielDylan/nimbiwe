@@ -4,11 +4,13 @@ import AddCircle from 'reicon-react-native/icons/AddCircle';
 import Tag from 'reicon-react-native/icons/Tag';
 import User from 'reicon-react-native/icons/User';
 
+import { useSynchronisation } from '@/lib/use-synchronisation';
 import { useTheme } from '@/theme';
 
 export default function Layout() {
   const theme = useTheme();
   const router = useRouter();
+  useSynchronisation(); // envoie les relevés saisis hors ligne dès que possible
 
   return (
     <Tabs

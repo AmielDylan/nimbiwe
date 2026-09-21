@@ -52,7 +52,7 @@ describe('position facultative', () => {
     await remplirEtEnvoyer();
 
     expect(await screen.findByText('Merci ! Votre relevé est enregistré.')).toBeOnTheScreen();
-    expect(api.releves).toEqual([{ produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
+    expect(api.releves).toEqual([{ id: expect.any(String), produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
     expect(demanderAutorisation).not.toHaveBeenCalled();
     expect(lirePosition).not.toHaveBeenCalled();
   });
@@ -69,7 +69,7 @@ describe('position facultative', () => {
     expect(await screen.findByText('Merci ! Votre relevé est enregistré.')).toBeOnTheScreen();
     expect(demanderAutorisation).toHaveBeenCalledTimes(1);
     expect(api.releves).toEqual([
-      { produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450, latitude: 6.37, longitude: 2.43 },
+      { id: expect.any(String), produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450, latitude: 6.37, longitude: 2.43 },
     ]);
     expect(screen.getByRole('switch', { name: 'Partager ma position' })).toBeChecked();
   });
@@ -89,7 +89,7 @@ describe('position facultative', () => {
     await remplirEtEnvoyer();
 
     expect(await screen.findByText('Merci ! Votre relevé est enregistré.')).toBeOnTheScreen();
-    expect(api.releves).toEqual([{ produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
+    expect(api.releves).toEqual([{ id: expect.any(String), produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
   });
 
   it("envoie le relevé sans position quand le téléphone n'arrive pas à la lire, en le disant", async () => {
@@ -104,7 +104,7 @@ describe('position facultative', () => {
     expect(
       await screen.findByText('Merci ! Votre relevé est enregistré, sans position (position indisponible).'),
     ).toBeOnTheScreen();
-    expect(api.releves).toEqual([{ produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
+    expect(api.releves).toEqual([{ id: expect.any(String), produit_id: 1, unite_id: 10, marche_id: 1, quantite: 1, prix_total: 450 }]);
   });
 
   it('cesse de joindre la position quand le contributeur désactive le partage', async () => {
