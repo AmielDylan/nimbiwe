@@ -9,7 +9,9 @@
 
 insert into public.unites (nom, symbole, type) values ('bol', 'bol', 'locale');
 
--- Produits vendus au bol sur les marchés de la V0. Aucune borne de plausibilité :
+-- Produits proposés au bol : hypothèse de départ (céréales et légumineuses vendues à la
+-- mesure), à valider avec les relais ; en ajouter ou en retirer est une simple ligne de
+-- `produits_unites`. Aucune borne de plausibilité :
 -- sans bornes connues pour une paire, rien n'est hors bornes (le contrôle des
 -- valeurs aberrantes, lui, s'applique comme pour toute unité).
 insert into public.produits_unites (produit_id, unite_id)
@@ -36,7 +38,9 @@ create table public.conversions_unites (
 alter table public.conversions_unites enable row level security;
 revoke all on public.conversions_unites from anon, authenticated;
 
--- On convertit une mesure locale vers une unité standard, jamais autrement.
+-- On convertit une mesure locale vers une unité standard, jamais autrement. Pas de
+-- `security definer` : la fonction ne lit que `unites`, lisible par tous, et la table est
+-- fermée à l'API (seul le tableau de bord y écrit).
 create function public.verifier_conversion()
 returns trigger
 language plpgsql
@@ -52,6 +56,8 @@ begin
   return new;
 end;
 $$;
+
+revoke execute on function public.verifier_conversion() from public, anon, authenticated;
 
 create trigger verifier_conversion_avant_ecriture
   before insert or update on public.conversions_unites
@@ -89,7 +95,7 @@ select
   case when a.publiable then a.mediane end as prix,
   a.nombre_releves,
   a.dernier_releve_le,
-  case when a.publiable then a.mediane / c.facteur::double precision end as prix_converti,
+  case when a.publiable then a.mediane::numeric / c.facteur end as prix_converti,
   case when a.publiable and c.facteur is not null then us.symbole end as unite_convertie
 from agregats a
 join public.produits p on p.id = a.produit_id

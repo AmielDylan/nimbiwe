@@ -3,6 +3,7 @@ import { admin, creerScenario, lecteurAnonyme } from './aide';
 const CONTRAINTE_VIOLEE = '23514';
 const CLE_ETRANGERE = '23503';
 const REFUSE_PAR_LA_SECURITE = '42501';
+const DOUBLON = '23505';
 
 type Scenario = Awaited<ReturnType<typeof creerScenario>>;
 
@@ -197,7 +198,7 @@ describe('facteur de conversion', () => {
 
     const { error } = await convertir(3);
 
-    expect(error?.code).toBe('23505');
+    expect(error?.code).toBe(DOUBLON);
   });
 
   it("n'est ni lisible ni modifiable par l'API : seul le tableau de bord le renseigne", async () => {
