@@ -5,13 +5,20 @@
 -- peut modifier ni l'un ni l'autre (droits de colonne : seul `nom_affiche` est
 -- modifiable). Un relais ancre SON marché : ses relevés y pèsent davantage et un
 -- seul suffit à publier le prix courant. Ailleurs, il compte comme tout le monde.
+--
+-- Le prix courant lit le statut EN DIRECT : retirer le rôle d'un relais, ou le
+-- rattacher à un autre marché, retire aussitôt son poids et son ancrage. Aucune
+-- base n'est déployée : la contrainte ci-dessous suppose qu'aucun relais n'existe
+-- encore sans marché ; sur une base existante, rattacher d'abord les relais.
 
 alter table public.profils
   add column marche_relais_id bigint references public.marches (id),
   add constraint profils_relais_avec_marche check (est_relais = (marche_relais_id is not null));
 
--- Marquage figé à l'envoi : le relevé garde la trace « fait par le relais de ce
--- marché », même si le statut change ensuite. Décidé par le serveur, invisible du
+-- Trace historique : le relevé garde « fait par le relais de ce marché à ce
+-- moment-là », même si le statut change ensuite. Elle sert à reconnaître ces
+-- relevés dans les données (jugement des autres relevés) ; elle n'entre PAS dans
+-- le prix courant, qui lit le statut actuel. Décidé par le serveur, invisible du
 -- client (aucun droit de lecture ni d'écriture sur cette colonne).
 alter table public.releves add column par_relais boolean not null default false;
 
@@ -65,13 +72,15 @@ releves_qualifies as (
     s.contributeur_id,
     s.prix_unitaire,
     s.observe_le,
-    s.par_relais,
+    (pr.est_relais and pr.marche_relais_id = s.marche_id) as relais_du_marche,
     s.observe_le >= now() - interval '7 days' as recent,
     (case
       when s.distance_marche_m is not null and s.distance_marche_m <= reglages.rayon then 1::double precision
       else reglages.poids_sans_position
-    end) * (case when s.par_relais then reglages.poids_relais else 1::double precision end) as poids
+    end) * (case when pr.est_relais and pr.marche_relais_id = s.marche_id
+                 then reglages.poids_relais else 1::double precision end) as poids
   from public.releves s
+  join public.profils pr on pr.id = s.contributeur_id
   cross join reglages
 ),
 agregats as (
@@ -80,7 +89,7 @@ agregats as (
     unite_id,
     marche_id,
     count(*) filter (where recent) as nombre_releves,
-    (count(*) filter (where recent and par_relais) >= 1
+    (count(*) filter (where recent and relais_du_marche) >= 1
       or count(distinct contributeur_id) filter (where recent) >= 3) as publiable,
     public.mediane_ponderee(
       array_agg(prix_unitaire::double precision order by prix_unitaire, id) filter (where recent),

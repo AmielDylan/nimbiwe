@@ -1,4 +1,12 @@
-import { admin, contributeurConnecte, creerScenario, identifiants, lecteurAnonyme } from './aide';
+import {
+  admin,
+  contributeurConnecte,
+  creerScenario,
+  identifiants,
+  lecteurAnonyme,
+  numeroDeTestNeuf,
+  seConnecter,
+} from './aide';
 
 const REFUSE_PAR_LA_SECURITE = '42501';
 const CONTRAINTE_VIOLEE = '23514';
@@ -6,13 +14,18 @@ const CONTRAINTE_VIOLEE = '23514';
 type Scenario = Awaited<ReturnType<typeof creerScenario>>;
 type Contributeur = Awaited<ReturnType<typeof contributeurConnecte>>;
 
+// Les marchés de test ont des coordonnées, et les relevés y sont envoyés depuis le marché
+// même : la position est vérifiée (poids 1), ce qui rend les résultats indépendants du
+// réglage « poids sans position », que d'autres fichiers de test modifient.
+const MARCHE = { latitude: 6.36, longitude: 2.43 };
+
 let scenario: Scenario; // le marché où l'on travaille
 let autreMarche: Scenario;
 const comptes: Contributeur[] = [];
 
 beforeEach(async () => {
-  scenario = await creerScenario();
-  autreMarche = await creerScenario();
+  scenario = await creerScenario(MARCHE);
+  autreMarche = await creerScenario(MARCHE);
 });
 
 afterEach(async () => {
@@ -80,15 +93,36 @@ describe('désignation d’un relais', () => {
     expect(data).toEqual({ est_relais: false, marche_relais_id: null });
   });
 
-  it('un relais garde son rôle intact quand il se reconnecte et change son nom : il agit comme un contributeur ordinaire', async () => {
-    const compte = await contributeurConnecteEtEnregistre();
-    await designerRelais(compte.id, scenario.marcheId);
+  it('un relais se connecte par SMS comme tout le monde : même compte, même rôle, il relève comme les autres', async () => {
+    const telephone = await numeroDeTestNeuf('relais');
+    const premiere = await seConnecter(telephone);
+    await designerRelais(premiere.utilisateurId, scenario.marcheId);
+    await premiere.client.auth.signOut();
+    await new Promise((resolve) => setTimeout(resolve, 1500)); // délai minimal entre deux codes (config locale : 1 s)
 
-    const nom = await compte.client.from('profils').update({ nom_affiche: 'Relais de Ganhi' }).eq('id', compte.id);
-    const profil = await compte.client.from('profils').select('est_relais, marche_relais_id').eq('id', compte.id).single();
+    const seconde = await seConnecter(telephone);
+    const profil = await seconde.client.from('profils').select('est_relais, marche_relais_id').eq('id', seconde.utilisateurId).single();
+    const releve = await seconde.client.from('releves').insert({
+      ...(await identifiants('maïs', 'kg')),
+      marche_id: scenario.marcheId,
+      quantite: 1,
+      prix_total: 450,
+    });
 
-    expect(nom.error).toBeNull();
+    expect(seconde.utilisateurId).toBe(premiere.utilisateurId);
     expect(profil.data).toEqual({ est_relais: true, marche_relais_id: scenario.marcheId });
+    expect(releve.error).toBeNull();
+    expect(await marqueDuDernierReleve(seconde.utilisateurId)).toBe(true);
+  });
+
+  it('un contributeur ne peut ni créer ni supprimer de profil : aucun chemin de contournement', async () => {
+    const compte = await contributeurConnecteEtEnregistre();
+
+    const creation = await compte.client.from('profils').insert({ id: crypto.randomUUID(), est_relais: true, marche_relais_id: scenario.marcheId });
+    const suppression = await compte.client.from('profils').delete().eq('id', compte.id);
+
+    expect(creation.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
+    expect(suppression.error?.code).toBe(REFUSE_PAR_LA_SECURITE);
   });
 
   it('le statut de relais et le marché vont ensemble', async () => {
@@ -159,29 +193,31 @@ describe('les relevés d’un relais sont reconnaissables', () => {
 });
 
 describe('poids des relais dans le prix courant', () => {
-  async function prix() {
+  async function prix(marcheId = scenario.marcheId) {
     const { data, error } = await lecteurAnonyme
       .from('prix_courants')
       .select('prix, statut')
-      .eq('marche_id', scenario.marcheId)
+      .eq('marche_id', marcheId)
       .single();
     expect(error).toBeNull();
     return data!;
   }
 
-  async function relaisEtDeuxContributeurs() {
-    await scenario.relever(await scenario.contributeur({ relais: true }), 'maïs', 'kg', { prix: 400 });
-    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 800 });
-    await scenario.relever(await scenario.contributeur(), 'maïs', 'kg', { prix: 1200 });
+  // Positions vérifiées : les poids sont 3 (relais) ; 1 ; 1 — totaux 5, positions 0,3 et 0,7.
+  async function relaisEtDeuxContributeurs(scene: Scenario = scenario, relais: boolean | number = true) {
+    const sur = { position: MARCHE };
+    await scene.relever(await scene.contributeur({ relais }), 'maïs', 'kg', { prix: 400, ...sur });
+    await scene.relever(await scene.contributeur(), 'maïs', 'kg', { prix: 800, ...sur });
+    await scene.relever(await scene.contributeur(), 'maïs', 'kg', { prix: 1200, ...sur });
   }
 
   it('à relevés identiques, un relevé de relais tire la médiane vers lui', async () => {
-    await relaisEtDeuxContributeurs(); // poids 1,5 (relais 3 × 0,5) ; 0,5 ; 0,5
+    await relaisEtDeuxContributeurs();
 
     const { prix: mediane, statut } = await prix();
 
     expect(statut).toBe('publie');
-    expect(mediane).toBeCloseTo(600, 3); // la médiane simple serait 800
+    expect(mediane).toBeCloseTo(600, 3); // 400 + (0,5 − 0,3) / (0,7 − 0,3) × 400 ; la médiane simple serait 800
   });
 
   it('le poids des relais est paramétrable : à 1, plus aucune différence', async () => {
@@ -195,31 +231,17 @@ describe('poids des relais dans le prix courant', () => {
     }
   });
 
-  it('le poids du relais se combine avec celui de la position', async () => {
-    const AVEC = { latitude: 6.36, longitude: 2.43 };
-    // Marché de test avec coordonnées : la position est vérifiée, donc le relais pèse 3 × 1.
-    const localise = await creerScenario({ latitude: 6.36, longitude: 2.43 });
-    try {
-      await localise.relever(await localise.contributeur({ relais: true }), 'maïs', 'kg', { prix: 400, position: AVEC });
-      await localise.relever(await localise.contributeur(), 'maïs', 'kg', { prix: 800 });
-      await localise.relever(await localise.contributeur(), 'maïs', 'kg', { prix: 1200 });
+  it("le relais d'un autre marché pèse comme un contributeur ordinaire ici", async () => {
+    await relaisEtDeuxContributeurs(scenario, autreMarche.marcheId);
 
-      const { data } = await lecteurAnonyme.from('prix_courants').select('prix').eq('marche_id', localise.marcheId).single();
-
-      // Poids 3 ; 0,5 ; 0,5 → total 4 ; positions 0,375 ; 0,8125 → médiane entre 400 et 800.
-      expect(data!.prix).toBeCloseTo(400 + ((0.5 - 0.375) / (0.8125 - 0.375)) * 400, 3);
-    } finally {
-      await localise.nettoyer();
-    }
+    expect((await prix()).prix).toBe(800); // médiane simple : aucun poids de relais
   });
 
-  it('un relais ancre la publication de son marché, pas celle des autres', async () => {
-    const relaisDAilleurs = await scenario.contributeur({ relaisDu: autreMarche.marcheId });
+  it("un relais ancre la publication de son marché, pas celle des autres", async () => {
+    const relaisDAilleurs = await scenario.contributeur({ relais: autreMarche.marcheId });
     await scenario.relever(relaisDAilleurs, 'maïs', 'kg', { prix: 500 });
 
-    const { data } = await lecteurAnonyme.from('prix_courants').select('statut, prix').eq('marche_id', scenario.marcheId).single();
-
-    expect(data).toEqual({ statut: 'pas_assez_de_donnees', prix: null });
+    expect(await prix()).toEqual({ statut: 'pas_assez_de_donnees', prix: null });
   });
 
   it('un seul relevé du relais du marché suffit à publier', async () => {
@@ -228,9 +250,24 @@ describe('poids des relais dans le prix courant', () => {
     expect(await prix()).toEqual({ statut: 'publie', prix: 500 });
   });
 
-  it('le facteur par défaut est de 3', async () => {
-    const { data } = await admin.from('parametres').select('valeur').eq('cle', 'poids_releve_de_relais').single();
+  it("retirer le statut de relais retire aussitôt son poids et son ancrage, sans toucher au marquage historique", async () => {
+    const relais = await scenario.contributeur({ relais: true });
+    await scenario.relever(relais, 'maïs', 'kg', { prix: 500 });
+    expect((await prix()).statut).toBe('publie');
 
-    expect(Number(data!.valeur)).toBe(3);
+    await admin.from('profils').update({ est_relais: false, marche_relais_id: null }).eq('id', relais);
+
+    expect((await prix()).statut).toBe('pas_assez_de_donnees');
+    const { data } = await admin.from('releves').select('par_relais').eq('contributeur_id', relais).single();
+    expect(data!.par_relais).toBe(true); // la trace reste : « fait par un relais à ce moment-là »
+  });
+
+  it('un relais déplacé vers un autre marché cesse d’ancrer l’ancien', async () => {
+    const relais = await scenario.contributeur({ relais: true });
+    await scenario.relever(relais, 'maïs', 'kg', { prix: 500 });
+
+    await admin.from('profils').update({ marche_relais_id: autreMarche.marcheId }).eq('id', relais);
+
+    expect((await prix()).statut).toBe('pas_assez_de_donnees');
   });
 });
