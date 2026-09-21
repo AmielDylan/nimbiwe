@@ -65,7 +65,7 @@ describe('profil', () => {
 
     const { data } = await client.from('profils').select('*').eq('id', utilisateurId).single();
 
-    expect(Object.keys(data!).sort()).toEqual(['cree_le', 'est_bloque', 'est_relais', 'id', 'nom_affiche']);
+    expect(Object.keys(data!).sort()).toEqual(['cree_le', 'est_bloque', 'est_relais', 'id', 'marche_relais_id', 'nom_affiche']);
   });
 
   it('un contributeur définit son nom affiché', async () => {
