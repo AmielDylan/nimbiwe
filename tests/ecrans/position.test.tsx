@@ -1,12 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
+import { reinitialiserLesToasts } from '@/lib/toasts';
+
 import { simulerPosition } from './position-factice';
 import { CLE_DE_SESSION, marches, prixCourant, produits, sessionDeTest, simulerApi } from './api-factice';
 
 const donnees = { marches, produits, prix_courants: [prixCourant({})] };
 
 beforeEach(async () => {
+  reinitialiserLesToasts(); // état de module partagé entre les tests de ce fichier
   await AsyncStorage.clear();
 });
 
