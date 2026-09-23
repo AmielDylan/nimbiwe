@@ -64,6 +64,8 @@ npm run db:stop    # arrête la base
 
 Les migrations sont dans `supabase/migrations/` : elles portent le référentiel réel (marchés, produits, unités) et les règles du serveur, dont le calcul du prix courant (vue `prix_courants`, sur 7 jours). Le fichier `supabase/seed.sql` charge des relevés d'exemple **factices** (comptes « Exemple »), uniquement en local : il ne s'applique jamais en production. Les dates d'exemple sont relatives au moment du reset : relancer `npm run db:reset` pour rafraîchir des prix qui ont plus de 7 jours.
 
+Pour déployer ces migrations vers un projet Supabase distant (pilote), voir [docs/deploiement-pilote.md](docs/deploiement-pilote.md) et `scripts/deployer-pilote.sh` : jamais `supabase config push` avec ce `config.toml` local (voir plus haut).
+
 ## Lancer l'app
 
 ```bash
