@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
-import { Profil } from '@/screens/profil';
+import { reinitialiserLesToasts } from '@/lib/toasts';
 
 import {
   CLE_DE_SESSION,
@@ -17,6 +17,7 @@ const donnees = { marches, produits, prix_courants: [prixCourant({})] };
 
 beforeEach(async () => {
   await AsyncStorage.clear();
+  reinitialiserLesToasts(); // état de module partagé entre les tests de ce fichier
 });
 
 async function saisirNumeroEtDemanderLeCode(numero = '01 97 00 00 00') {
@@ -26,7 +27,7 @@ async function saisirNumeroEtDemanderLeCode(numero = '01 97 00 00 00') {
 
 async function seConnecter() {
   await saisirNumeroEtDemanderLeCode();
-  fireEvent.changeText(await screen.findByLabelText('Code reçu par SMS'), CODE_VALIDE);
+  fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), CODE_VALIDE);
   fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
   await screen.findByText('Vous êtes connecté.');
 }
@@ -35,7 +36,7 @@ describe('écran Profil, non connecté', () => {
   it("explique pourquoi le numéro est demandé avant de le saisir", async () => {
     simulerApi(donnees);
 
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
     expect(screen.getByText(/uniquement pour vous connecter/)).toBeOnTheScreen();
@@ -47,17 +48,17 @@ describe('écran Profil, non connecté', () => {
 
   it('envoie le code au numéro saisi, au format international, puis demande le code', async () => {
     const api = simulerApi(donnees);
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     await saisirNumeroEtDemanderLeCode('01 97 00 00 00');
 
-    expect(await screen.findByLabelText('Code reçu par SMS')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Chiffre 1 sur 6')).toBeOnTheScreen();
     expect(api.demandesDeCode).toEqual(['+2290197000000']);
   });
 
   it("refuse un numéro invalide sans rien envoyer", async () => {
     const api = simulerApi(donnees);
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     await saisirNumeroEtDemanderLeCode('12');
 
@@ -67,7 +68,7 @@ describe('écran Profil, non connecté', () => {
 
   it("dit clairement quand l'envoi du code échoue", async () => {
     simulerApi(donnees, { envoiEnPanne: true });
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     await saisirNumeroEtDemanderLeCode();
 
@@ -78,7 +79,7 @@ describe('écran Profil, non connecté', () => {
 
   it('connecte avec le bon code', async () => {
     simulerApi(donnees);
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     await seConnecter();
 
@@ -88,10 +89,10 @@ describe('écran Profil, non connecté', () => {
 
   it("distingue une panne du serveur d'un code faux quand on vérifie le code", async () => {
     simulerApi(donnees, { verificationEnPanne: true });
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
     await saisirNumeroEtDemanderLeCode();
 
-    fireEvent.changeText(await screen.findByLabelText('Code reçu par SMS'), CODE_VALIDE);
+    fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), CODE_VALIDE);
     fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
 
     expect(
@@ -102,10 +103,10 @@ describe('écran Profil, non connecté', () => {
 
   it('dit clairement quand le code est faux ou expiré', async () => {
     simulerApi(donnees);
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
     await saisirNumeroEtDemanderLeCode();
 
-    fireEvent.changeText(await screen.findByLabelText('Code reçu par SMS'), '000000');
+    fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), '000000');
     fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
 
     expect(
@@ -114,13 +115,56 @@ describe('écran Profil, non connecté', () => {
     expect(screen.queryByText('Vous êtes connecté.')).not.toBeOnTheScreen();
   });
 
+  it('vérifie le code automatiquement une fois les 6 chiffres saisis, sans toucher un bouton', async () => {
+    const api = simulerApi(donnees);
+    renderRouter('./src/app', { initialUrl: '/profil' });
+    await saisirNumeroEtDemanderLeCode();
+
+    fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), CODE_VALIDE);
+
+    expect(await screen.findByText('Vous êtes connecté.')).toBeOnTheScreen();
+    expect(api.demandesDeCode).toEqual(['+2290197000000']);
+  });
+
+  it('chaque case du code a un intitulé lisible par un lecteur d’écran', async () => {
+    simulerApi(donnees);
+    renderRouter('./src/app', { initialUrl: '/profil' });
+    await saisirNumeroEtDemanderLeCode();
+    await screen.findByLabelText('Chiffre 1 sur 6');
+
+    for (let position = 1; position <= 6; position += 1) {
+      expect(screen.getByLabelText(`Chiffre ${position} sur 6`)).toBeOnTheScreen();
+    }
+  });
+
+  it('redemander un code vide le champ précédent', async () => {
+    jest.useFakeTimers();
+    try {
+      simulerApi(donnees);
+      renderRouter('./src/app', { initialUrl: '/profil' });
+      await saisirNumeroEtDemanderLeCode();
+      fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), '000000'); // code faux, retenté après un délai
+
+      await act(async () => {
+        jest.advanceTimersByTime(60_000);
+      });
+      await act(async () => {
+        fireEvent.press(screen.getByRole('button', { name: 'Renvoyer le code' }));
+      });
+
+      expect(screen.getByLabelText('Chiffre 1 sur 6')).toHaveDisplayValue('');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('ne permet de redemander un code qu’après un court délai', async () => {
     jest.useFakeTimers();
     try {
       const api = simulerApi(donnees);
-      render(<Profil />);
+      renderRouter('./src/app', { initialUrl: '/profil' });
       await saisirNumeroEtDemanderLeCode();
-      await screen.findByLabelText('Code reçu par SMS');
+      await screen.findByLabelText('Chiffre 1 sur 6');
 
       expect(screen.getByRole('button', { name: /Renvoyer le code dans 60 s/ })).toBeDisabled();
 
@@ -142,7 +186,7 @@ describe('écran Profil, connecté', () => {
     await AsyncStorage.setItem(CLE_DE_SESSION, JSON.stringify(sessionDeTest()));
     const api = simulerApi(donnees);
 
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     expect(await screen.findByText('Vous êtes connecté.')).toBeOnTheScreen();
     expect(api.demandesDeCode).toEqual([]);
@@ -152,7 +196,7 @@ describe('écran Profil, connecté', () => {
     await AsyncStorage.setItem(CLE_DE_SESSION, JSON.stringify(sessionDeTest()));
     const api = simulerApi(donnees, { compteSupprime: true });
 
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     expect(await screen.findByLabelText('Numéro de téléphone')).toBeOnTheScreen();
     expect(screen.queryByText('Vous êtes connecté.')).not.toBeOnTheScreen();
@@ -163,7 +207,7 @@ describe('écran Profil, connecté', () => {
     await AsyncStorage.setItem(CLE_DE_SESSION, JSON.stringify(sessionDeTest('22997000000')));
     simulerApi(donnees, { nomAffiche: 'Adjovi' });
 
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
 
     expect(await screen.findByDisplayValue('Adjovi')).toBeOnTheScreen();
     expect(screen.queryByText(/22997000000/)).not.toBeOnTheScreen();
@@ -172,7 +216,7 @@ describe('écran Profil, connecté', () => {
 
   it('enregistre le nom affiché', async () => {
     const api = simulerApi(donnees);
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
     await seConnecter();
 
     fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi');
@@ -184,7 +228,7 @@ describe('écran Profil, connecté', () => {
 
   it("dit que le nom n'a pas été enregistré quand aucun profil n'est modifié", async () => {
     simulerApi(donnees, { profilIntrouvable: true });
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
     await seConnecter();
 
     fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi');
@@ -196,22 +240,9 @@ describe('écran Profil, connecté', () => {
     expect(screen.queryByText('Nom enregistré.')).not.toBeOnTheScreen();
   });
 
-  it("efface le message d'enregistrement dès que le nom est modifié", async () => {
-    simulerApi(donnees);
-    render(<Profil />);
-    await seConnecter();
-    fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi');
-    fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
-    await screen.findByText('Nom enregistré.');
-
-    fireEvent.changeText(screen.getByLabelText('Nom affiché'), 'Adjovi D');
-
-    expect(screen.queryByText('Nom enregistré.')).not.toBeOnTheScreen();
-  });
-
   it('déconnecte et revient au formulaire de connexion', async () => {
     const api = simulerApi(donnees);
-    render(<Profil />);
+    renderRouter('./src/app', { initialUrl: '/profil' });
     await seConnecter();
 
     fireEvent.press(screen.getByRole('button', { name: 'Se déconnecter' }));

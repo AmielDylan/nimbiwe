@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
+import { reinitialiserLesToasts } from '@/lib/toasts';
+
 import {
   CLE_DE_SESSION,
   marches,
@@ -12,6 +14,7 @@ import {
 } from './api-factice';
 
 beforeEach(async () => {
+  reinitialiserLesToasts(); // état de module partagé entre les tests de ce fichier
   await AsyncStorage.clear();
   (globalThis.fetch as jest.Mock).mockClear();
 });

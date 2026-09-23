@@ -4,6 +4,7 @@ import AddCircle from 'reicon-react-native/icons/AddCircle';
 import Tag from 'reicon-react-native/icons/Tag';
 import User from 'reicon-react-native/icons/User';
 
+import { ToastHost } from '@/components/toast-host';
 import { useSynchronisation } from '@/lib/use-synchronisation';
 import { useTheme } from '@/theme';
 
@@ -12,6 +13,15 @@ export default function Layout() {
   const router = useRouter();
   useSynchronisation(); // envoie les relevés saisis hors ligne dès que possible
 
+  return (
+    <>
+      <TabsRacine theme={theme} router={router} />
+      <ToastHost />
+    </>
+  );
+}
+
+function TabsRacine({ theme, router }: { theme: ReturnType<typeof useTheme>; router: ReturnType<typeof useRouter> }) {
   return (
     <Tabs
       screenOptions={{

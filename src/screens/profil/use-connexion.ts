@@ -18,6 +18,8 @@ export function useConnexion() {
   const [saisie, setSaisie] = useState('');
   const [numero, setNumero] = useState<string | null>(null); // renseigné une fois le code envoyé
   const [code, setCode] = useState('');
+  // Change à chaque envoi de code (premier envoi ou renvoi) : remet à zéro le champ à 6 cases.
+  const [envoiCompte, setEnvoiCompte] = useState(0);
   const [erreur, setErreur] = useState<string | null>(null);
   const [requeteEnCours, setRequeteEnCours] = useState(false);
   const [avantRenvoi, setAvantRenvoi] = useState(0);
@@ -43,6 +45,8 @@ export function useConnexion() {
       return;
     }
     setNumero(destinataire);
+    setCode('');
+    setEnvoiCompte((n) => n + 1);
     setAvantRenvoi(DELAI_AVANT_RENVOI);
   }
 
@@ -55,11 +59,11 @@ export function useConnexion() {
     await envoyerLeCode(destinataire);
   }
 
-  async function verifierLeCode() {
+  async function verifierLeCode(codeAVerifier = code) {
     if (!numero) return;
     setRequeteEnCours(true);
     setErreur(null);
-    const { error } = await supabase.auth.verifyOtp({ phone: numero, token: code.trim(), type: 'sms' });
+    const { error } = await supabase.auth.verifyOtp({ phone: numero, token: codeAVerifier.trim(), type: 'sms' });
     setRequeteEnCours(false);
     // En cas de succès, useSession bascule l'écran sur le profil.
     if (error) {
@@ -81,6 +85,7 @@ export function useConnexion() {
     numero,
     code,
     setCode,
+    envoiCompte,
     erreur,
     requeteEnCours,
     avantRenvoi,

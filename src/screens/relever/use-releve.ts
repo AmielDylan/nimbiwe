@@ -4,6 +4,7 @@ import { HORS_BORNES, type ChargeReleve, envoyerReleve, messageDeRefus } from '@
 import { ajouter } from '@/lib/file-attente';
 import { formaterMontant, formaterQuantite } from '@/lib/formats';
 import { nouvelIdentifiant } from '@/lib/identifiant';
+import { notifier } from '@/lib/toasts';
 
 import { usePosition } from './use-position';
 import type { Marche, Produit } from './use-referentiel';
@@ -137,12 +138,11 @@ export function useReleve(produits: Produit[], marches: Marche[], proprietaire: 
     }
     if (resultat.statut === 'envoye') {
       viderLaSaisie();
-      setMessage({
-        texte: lecture.demandee && lecture.position === null
+      notifier.succes(
+        lecture.demandee && lecture.position === null
           ? 'Merci ! Votre relevé est enregistré, sans position (position indisponible).'
           : 'Merci ! Votre relevé est enregistré.',
-        erreur: false,
-      });
+      );
       apresEnvoi();
       return;
     }

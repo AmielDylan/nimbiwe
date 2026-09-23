@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
+import { notifier } from '@/lib/toasts';
 
 /** Même limite que la contrainte de la base (supabase/migrations, profils_nom_affiche_valide). */
 export const LONGUEUR_MAX_NOM = 40;
@@ -53,7 +54,8 @@ export function useNomAffiche(utilisateurId: string) {
       // Aucune ligne modifiée : le profil n'existe pas (compte supprimé côté serveur).
       setMessage({ texte: 'Votre profil est introuvable. Déconnectez-vous, puis reconnectez-vous.', erreur: true });
     } else {
-      setMessage({ texte: 'Nom enregistré.', erreur: false });
+      // Confirmation éphémère (toast) : pas d'action à faire dessus, contrairement aux erreurs ci-dessus.
+      notifier.succes('Nom enregistré.');
     }
   }
 
