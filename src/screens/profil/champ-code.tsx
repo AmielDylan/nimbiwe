@@ -36,14 +36,20 @@ export function ChampCode({ onChange, onComplete, erreur, desactive }: Props) {
 
   function ecrire(saisie: string, index: number) {
     const propres = chiffresSeuls(saisie);
-    if (propres.length > 1) {
-      // Collage ou remplissage automatique du code entier, arrivé dans une seule case.
+    // Collage ou remplissage automatique du code entier : n'arrive que dans la première case
+    // (seule à porter `textContentType="oneTimeCode"`). Ailleurs, un collage de plusieurs
+    // chiffres n'en garde qu'un, comme une saisie normale.
+    if (propres.length > 1 && index === 0) {
       const recues = propres.slice(0, LONGUEUR).split('');
       const suite = Array.from({ length: LONGUEUR }, (_, i) => recues[i] ?? '');
       setChiffres(suite);
       if (recues.length >= LONGUEUR) refs.current[LONGUEUR - 1]?.blur();
       else refs.current[recues.length]?.focus();
       annoncer(suite);
+      return;
+    }
+    if (propres.length > 1) {
+      ecrire(propres[0], index);
       return;
     }
     const suite = [...chiffres];

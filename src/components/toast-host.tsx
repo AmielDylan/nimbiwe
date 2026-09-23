@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet, Text, View } from 'react-native';
 
 import { useToasts } from '@/lib/toasts';
 import { useTheme } from '@/theme';
@@ -10,7 +10,9 @@ function ToastUnique({ message }: { message: string }) {
 
   useEffect(() => {
     Animated.timing(opacite, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-  }, [opacite]);
+    // `accessibilityLiveRegion` (ci-dessous) n'est lu qu'Android ; announceForAccessibility couvre iOS.
+    AccessibilityInfo.announceForAccessibility(message);
+  }, [opacite, message]);
 
   return (
     <Animated.View style={[styles.toast, { backgroundColor: theme.texte, opacity: opacite }]}>

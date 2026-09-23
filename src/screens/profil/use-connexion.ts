@@ -60,7 +60,9 @@ export function useConnexion() {
   }
 
   async function verifierLeCode(codeAVerifier = code) {
-    if (!numero) return;
+    // Sans ce verrou, le remplissage automatique du SMS (déclenche `onComplete`) suivi d'un
+    // appui sur « Se connecter » avant le prochain rendu enverrait deux vérifications.
+    if (!numero || requeteEnCours) return;
     setRequeteEnCours(true);
     setErreur(null);
     const { error } = await supabase.auth.verifyOtp({ phone: numero, token: codeAVerifier.trim(), type: 'sms' });

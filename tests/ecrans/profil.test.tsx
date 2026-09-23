@@ -16,8 +16,8 @@ import {
 const donnees = { marches, produits, prix_courants: [prixCourant({})] };
 
 beforeEach(async () => {
-  await AsyncStorage.clear();
   reinitialiserLesToasts(); // état de module partagé entre les tests de ce fichier
+  await AsyncStorage.clear();
 });
 
 async function saisirNumeroEtDemanderLeCode(numero = '01 97 00 00 00') {
@@ -135,6 +135,42 @@ describe('écran Profil, non connecté', () => {
     for (let position = 1; position <= 6; position += 1) {
       expect(screen.getByLabelText(`Chiffre ${position} sur 6`)).toBeOnTheScreen();
     }
+  });
+
+  it("un collage dans une autre case que la première n'en garde que le premier chiffre", async () => {
+    simulerApi(donnees);
+    renderRouter('./src/app', { initialUrl: '/profil' });
+    await saisirNumeroEtDemanderLeCode();
+    await screen.findByLabelText('Chiffre 1 sur 6');
+
+    fireEvent.changeText(screen.getByLabelText('Chiffre 3 sur 6'), '789');
+
+    expect(screen.getByLabelText('Chiffre 3 sur 6')).toHaveDisplayValue('7');
+    expect(screen.getByLabelText('Chiffre 1 sur 6')).toHaveDisplayValue('');
+  });
+
+  it('ignore les caractères non numériques et un collage de plus de 6 chiffres', async () => {
+    const api = simulerApi(donnees);
+    renderRouter('./src/app', { initialUrl: '/profil' });
+    await saisirNumeroEtDemanderLeCode();
+
+    fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), `abc${CODE_VALIDE}789`);
+
+    expect(await screen.findByText('Vous êtes connecté.')).toBeOnTheScreen();
+    // Les 6 premiers chiffres seulement : les caractères en trop et les lettres sont écartés.
+    expect(api.demandesDeCode).toEqual(['+2290197000000']);
+  });
+
+  it("un appui sur « Se connecter » juste après le remplissage automatique n'envoie qu'une vérification", async () => {
+    simulerApi(donnees);
+    renderRouter('./src/app', { initialUrl: '/profil' });
+    await saisirNumeroEtDemanderLeCode();
+
+    fireEvent.changeText(await screen.findByLabelText('Chiffre 1 sur 6'), CODE_VALIDE);
+    // Le bouton n'est pas encore rendu indisponible : un second appui immédiat ne doit rien renvoyer.
+    fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
+
+    expect(await screen.findByText('Vous êtes connecté.')).toBeOnTheScreen();
   });
 
   it('redemander un code vide le champ précédent', async () => {

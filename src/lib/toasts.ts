@@ -18,6 +18,7 @@ const DUREE_AFFICHAGE_MS = 3000;
 let compteur = 0;
 let toasts: Toast[] = [];
 const ecouteurs = new Set<(toasts: Toast[]) => void>();
+const minuteurs = new Map<number, ReturnType<typeof setTimeout>>();
 
 function notifierEcouteurs() {
   ecouteurs.forEach((ecouteur) => ecouteur(toasts));
@@ -25,6 +26,7 @@ function notifierEcouteurs() {
 
 function retirer(id: number) {
   toasts = toasts.filter((toast) => toast.id !== id);
+  minuteurs.delete(id);
   notifierEcouteurs();
 }
 
@@ -33,7 +35,7 @@ export const notifier = {
     const id = ++compteur;
     toasts = [...toasts, { id, message }];
     notifierEcouteurs();
-    setTimeout(() => retirer(id), DUREE_AFFICHAGE_MS);
+    minuteurs.set(id, setTimeout(() => retirer(id), DUREE_AFFICHAGE_MS));
   },
 };
 
@@ -51,6 +53,8 @@ export function useToasts(): Toast[] {
 
 /** Entre deux tests : la liste des toasts est un état de module, partagé sinon. */
 export function reinitialiserLesToasts() {
+  minuteurs.forEach((minuteur) => clearTimeout(minuteur));
+  minuteurs.clear();
   toasts = [];
   notifierEcouteurs();
 }
