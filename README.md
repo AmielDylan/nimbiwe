@@ -93,5 +93,18 @@ Pour n'en lancer qu'une : `npx jest --selectProjects api` ou `npx jest --selectP
 - `src/app/` : routes uniquement, sans logique métier
 - `src/screens/` : corps des écrans ; un écran complexe a son dossier (`prix/`, `relever/`, `profil/` : accès aux données, logique et composants ensemble)
 - `src/components/` : composants partagés (boutons, champs, puces)
+- `src/components/reacticx/` : composants tiers de [reacticx](https://github.com/rit3zh/reacticx) (MIT), copiés dans le dépôt via sa CLI — ce ne sont pas des dépendances npm, mais du code source à nous (voir plus bas)
 - `src/lib/` : client Supabase (session conservée dans AsyncStorage), formats français, hook de session
 - `supabase/` : configuration, migrations et données de départ
+
+## Composants reacticx
+
+`reacticx` copie du code source dans le dépôt plutôt que de l'installer comme dépendance npm (façon shadcn). Utilisé pour quelques composants précis, jamais tel quel dans les écrans : on les enveloppe dans un composant français avant de s'en servir, pour garder les conventions du reste du code (commentaires en français, pas de NativeWind).
+
+```bash
+npx reacticx@latest list              # tout le catalogue
+npx reacticx@latest add <composant>   # copie un composant dans src/components/reacticx/
+npx reacticx@latest diff <composant>  # compare la copie locale à la dernière version du catalogue
+```
+
+Composants retenus : `otp-input` (base, dépend de `react-native-reanimated`) et `icon-tile` (primitives, dépend de `expo-linear-gradient`). Les deux sont compatibles Expo Go, aucun dev client personnalisé n'est nécessaire. La plupart des autres dépôts de [rit3zh](https://github.com/rit3zh) (hors `reacticx`) sont des modules natifs **iOS uniquement**, écrits en Swift : à éviter pour une cible Android.
