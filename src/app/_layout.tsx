@@ -5,23 +5,33 @@ import Tag from 'reicon-react-native/icons/Tag';
 import User from 'reicon-react-native/icons/User';
 
 import { ToastHost } from '@/components/toast-host';
+import { useSession } from '@/lib/use-session';
 import { useSynchronisation } from '@/lib/use-synchronisation';
 import { useTheme } from '@/theme';
 
 export default function Layout() {
   const theme = useTheme();
   const router = useRouter();
+  const session = useSession();
   useSynchronisation(); // envoie les relevés saisis hors ligne dès que possible
+
+  // `session === undefined` tant que la session enregistrée n'est pas relue (elle survient vite,
+  // avant tout affichage utile) : l'onglet suppose alors « pas connecté », comme un premier
+  // lancement. Un compte déjà connecté peut donc voir l'onglet passer de « Connexion » à
+  // « Profil » l'instant de cette lecture ; accepté pour l'instant (projet personnel).
+  const nonConnecte = !session;
 
   return (
     <>
-      <TabsRacine theme={theme} router={router} />
+      <TabsRacine theme={theme} router={router} nonConnecte={nonConnecte} />
       <ToastHost />
     </>
   );
 }
 
-function TabsRacine({ theme, router }: { theme: ReturnType<typeof useTheme>; router: ReturnType<typeof useRouter> }) {
+type Props = { theme: ReturnType<typeof useTheme>; router: ReturnType<typeof useRouter>; nonConnecte: boolean };
+
+function TabsRacine({ theme, router, nonConnecte }: Props) {
   return (
     <Tabs
       screenOptions={{
@@ -55,8 +65,9 @@ function TabsRacine({ theme, router }: { theme: ReturnType<typeof useTheme>; rou
       <Tabs.Screen
         name="profil"
         options={{
-          title: 'Profil',
-          tabBarAccessibilityLabel: 'Profil, onglet 3 sur 3',
+          // Avant connexion, l'onglet mène droit au formulaire : son nom le dit.
+          title: nonConnecte ? 'Connexion' : 'Profil',
+          tabBarAccessibilityLabel: nonConnecte ? 'Connexion, onglet 3 sur 3' : 'Profil, onglet 3 sur 3',
           tabBarIcon: ({ size, focused }) => (
             <User color={focused ? theme.accent : theme.texteSecondaire} size={size} weight={focused ? 'Filled' : 'Outline'} />
           ),

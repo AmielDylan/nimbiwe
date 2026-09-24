@@ -33,16 +33,19 @@ async function seConnecter() {
 }
 
 describe('écran Profil, non connecté', () => {
-  it("explique pourquoi le numéro est demandé avant de le saisir", async () => {
+  it("propose de dire pourquoi le numéro est demandé, repliable", async () => {
     simulerApi(donnees);
 
     renderRouter('./src/app', { initialUrl: '/profil' });
 
-    expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Numéro de téléphone')).toBeOnTheScreen();
+    expect(screen.queryByText(/uniquement pour vous connecter/)).not.toBeOnTheScreen();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Pourquoi votre numéro de téléphone ?' }));
+
     expect(screen.getByText(/uniquement pour vous connecter/)).toBeOnTheScreen();
     expect(screen.getByText(/En demandant un code, vous acceptez/)).toBeOnTheScreen();
     expect(screen.getByText(/jamais montré aux autres/)).toBeOnTheScreen();
-    expect(screen.getByLabelText('Numéro de téléphone')).toBeOnTheScreen();
     expect(screen.queryByText('Vous êtes connecté.')).not.toBeOnTheScreen();
   });
 
@@ -247,7 +250,6 @@ describe('écran Profil, connecté', () => {
 
     expect(await screen.findByDisplayValue('Adjovi')).toBeOnTheScreen();
     expect(screen.queryByText(/22997000000/)).not.toBeOnTheScreen();
-    expect(screen.getByText(/numéro n’est jamais montré aux autres/)).toBeOnTheScreen();
   });
 
   it('enregistre le nom affiché', async () => {

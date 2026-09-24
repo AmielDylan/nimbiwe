@@ -56,7 +56,7 @@ describe('relever, non connecté', () => {
 
     fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
 
-    expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Numéro de téléphone')).toBeOnTheScreen();
     expect(getPathname()).toBe('/profil');
   });
 });
@@ -280,7 +280,7 @@ describe('refus et pannes', () => {
 
     expect(
       await screen.findByText(
-        "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.",
+        "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous.",
       ),
     ).toBeOnTheScreen();
   });
