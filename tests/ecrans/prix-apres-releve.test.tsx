@@ -71,8 +71,8 @@ describe('après un relevé', () => {
     renderRouter('./src/app');
     await screen.findByText('425 FCFA / kg');
 
-    toucherLOnglet('Profil, onglet 3 sur 3');
-    await screen.findByText('Pourquoi votre numéro de téléphone ?');
+    toucherLOnglet('Connexion, onglet 3 sur 3');
+    await screen.findByLabelText('Numéro de téléphone');
     toucherLOnglet('Prix, onglet 1 sur 3');
 
     await screen.findByText('425 FCFA / kg');

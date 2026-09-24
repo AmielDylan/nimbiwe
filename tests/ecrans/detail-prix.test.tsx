@@ -103,7 +103,7 @@ describe('sans compte', () => {
 
     fireEvent.press(screen.getByRole('button', { name: 'Se connecter' }));
 
-    expect(await screen.findByText('Pourquoi votre numéro de téléphone ?')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Numéro de téléphone')).toBeOnTheScreen();
     expect(getPathname()).toBe('/profil');
   });
 });

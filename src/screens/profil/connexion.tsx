@@ -2,6 +2,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Bouton } from '@/components/bouton';
 import { ChampTexte } from '@/components/champ-texte';
+import { InfoBulle } from '@/components/info-bulle';
+import { Logo } from '@/components/logo';
 import { useTheme } from '@/theme';
 
 import { ChampCode } from './champ-code';
@@ -24,13 +26,8 @@ function EtapeNumero({ connexion }: { connexion: Connexion }) {
       style={{ backgroundColor: theme.fond }}
       contentContainerStyle={styles.contenu}
       keyboardShouldPersistTaps="handled">
-      <View style={[styles.consentement, { backgroundColor: theme.carte }]}>
-        <Text style={[styles.titre, { color: theme.texte }]}>Pourquoi votre numéro de téléphone ?</Text>
-        <Text style={[styles.texte, { color: theme.texteSecondaire }]}>
-          Nimbiwe utilise votre numéro uniquement pour vous connecter et limiter les abus. Il n’est jamais montré
-          aux autres utilisateurs. En demandant un code, vous acceptez cette utilisation. Vous pouvez consulter les
-          prix sans vous connecter.
-        </Text>
+      <View style={styles.logo}>
+        <Logo />
       </View>
       <ChampTexte
         libelle="Numéro de téléphone"
@@ -42,6 +39,11 @@ function EtapeNumero({ connexion }: { connexion: Connexion }) {
         onChangeText={connexion.setSaisie}
       />
       <Bouton libelle="Recevoir un code" onPress={connexion.demanderLeCode} disabled={connexion.requeteEnCours} />
+      <InfoBulle libelle="Pourquoi votre numéro de téléphone ?">
+        Nimbiwe utilise votre numéro uniquement pour vous connecter et limiter les abus. Il n’est jamais montré aux
+        autres utilisateurs. En demandant un code, vous acceptez cette utilisation. Vous pouvez consulter les prix
+        sans vous connecter.
+      </InfoBulle>
       {connexion.erreur && <Text style={[styles.erreur, { color: theme.erreur }]}>{connexion.erreur}</Text>}
     </ScrollView>
   );
@@ -87,9 +89,8 @@ function EtapeCode({ connexion }: { connexion: Connexion }) {
 }
 
 const styles = StyleSheet.create({
-  contenu: { padding: 16, gap: 12 },
-  consentement: { borderRadius: 12, padding: 16, gap: 6 },
-  titre: { fontSize: 17, fontWeight: '600' },
+  contenu: { padding: 16, gap: 12, alignItems: 'stretch' },
+  logo: { alignItems: 'center', marginBottom: 8 },
   texte: { fontSize: 15, lineHeight: 21 },
   erreur: { fontSize: 15 },
 });
