@@ -18,9 +18,6 @@ export function ProfilConnecte({ session }: { session: Session }) {
       contentContainerStyle={styles.contenu}
       keyboardShouldPersistTaps="handled">
       <Text style={[styles.titre, { color: theme.texte }]}>Vous êtes connecté.</Text>
-      <Text style={[styles.texte, { color: theme.texteSecondaire }]}>
-        Votre numéro n’est jamais montré aux autres. Seul votre nom affiché l’est.
-      </Text>
       <ChampTexte
         libelle="Nom affiché"
         maxLength={LONGUEUR_MAX_NOM}
