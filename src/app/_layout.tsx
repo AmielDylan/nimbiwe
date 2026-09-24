@@ -15,17 +15,23 @@ export default function Layout() {
   const session = useSession();
   useSynchronisation(); // envoie les relevés saisis hors ligne dès que possible
 
+  // `session === undefined` tant que la session enregistrée n'est pas relue (elle survient vite,
+  // avant tout affichage utile) : l'onglet suppose alors « pas connecté », comme un premier
+  // lancement. Un compte déjà connecté peut donc voir l'onglet passer de « Connexion » à
+  // « Profil » l'instant de cette lecture ; accepté pour l'instant (projet personnel).
+  const nonConnecte = !session;
+
   return (
     <>
-      <TabsRacine theme={theme} router={router} connecte={Boolean(session)} />
+      <TabsRacine theme={theme} router={router} nonConnecte={nonConnecte} />
       <ToastHost />
     </>
   );
 }
 
-type Props = { theme: ReturnType<typeof useTheme>; router: ReturnType<typeof useRouter>; connecte: boolean };
+type Props = { theme: ReturnType<typeof useTheme>; router: ReturnType<typeof useRouter>; nonConnecte: boolean };
 
-function TabsRacine({ theme, router, connecte }: Props) {
+function TabsRacine({ theme, router, nonConnecte }: Props) {
   return (
     <Tabs
       screenOptions={{
@@ -60,8 +66,8 @@ function TabsRacine({ theme, router, connecte }: Props) {
         name="profil"
         options={{
           // Avant connexion, l'onglet mène droit au formulaire : son nom le dit.
-          title: connecte ? 'Profil' : 'Connexion',
-          tabBarAccessibilityLabel: connecte ? 'Profil, onglet 3 sur 3' : 'Connexion, onglet 3 sur 3',
+          title: nonConnecte ? 'Connexion' : 'Profil',
+          tabBarAccessibilityLabel: nonConnecte ? 'Connexion, onglet 3 sur 3' : 'Profil, onglet 3 sur 3',
           tabBarIcon: ({ size, focused }) => (
             <User color={focused ? theme.accent : theme.texteSecondaire} size={size} weight={focused ? 'Filled' : 'Outline'} />
           ),

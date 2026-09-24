@@ -280,7 +280,7 @@ describe('refus et pannes', () => {
 
     expect(
       await screen.findByText(
-        "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.",
+        "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous.",
       ),
     ).toBeOnTheScreen();
   });

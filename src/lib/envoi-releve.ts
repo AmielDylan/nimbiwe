@@ -63,7 +63,8 @@ export function messageDeRefus(code: string | undefined, saisiLe?: string): stri
     case COMPTE_BLOQUE:
       return "Votre compte ne peut plus relever de prix. Contactez l'équipe Nimbiwe.";
     case COMPTE_INCONNU:
-      return "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous depuis l'onglet Profil.";
+      // Pas de nom d'onglet ici : il s'appelle « Connexion » avant de se reconnecter, « Profil » après.
+      return "Votre compte n'est plus reconnu. Déconnectez-vous, puis reconnectez-vous.";
     case DATE_INVALIDE:
       if (!enAttente) return 'La date de votre téléphone semble incorrecte. Vérifiez-la, puis réessayez.';
       return Date.now() - new Date(saisiLe).getTime() > JOURS_MAX * 24 * 60 * 60 * 1000

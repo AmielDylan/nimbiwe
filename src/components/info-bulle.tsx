@@ -19,7 +19,11 @@ export function InfoBulle({ libelle, children }: { libelle: string; children: st
         <InfoCircle color={theme.texteSecondaire} size={16} />
         <Text style={[styles.libelle, { color: theme.texteSecondaire }]}>{libelle}</Text>
       </Pressable>
-      {ouverte && <Text style={[styles.texte, { color: theme.texteSecondaire }]}>{children}</Text>}
+      {ouverte && (
+        <Text accessibilityLiveRegion="polite" style={[styles.texte, { color: theme.texteSecondaire }]}>
+          {children}
+        </Text>
+      )}
     </View>
   );
 }

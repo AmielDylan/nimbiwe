@@ -8,7 +8,14 @@ export function Logo({ largeur = 140 }: { largeur?: number }) {
   const hauteur = (largeur * HAUTEUR_ORIGINE) / LARGEUR_ORIGINE;
 
   return (
-    <Svg width={largeur} height={hauteur} viewBox={`0 0 ${LARGEUR_ORIGINE} ${HAUTEUR_ORIGINE}`} fill="none">
+    <Svg
+      width={largeur}
+      height={hauteur}
+      viewBox={`0 0 ${LARGEUR_ORIGINE} ${HAUTEUR_ORIGINE}`}
+      fill="none"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Nimbiwe">
       <Path
         fillRule="evenodd"
         clipRule="evenodd"
